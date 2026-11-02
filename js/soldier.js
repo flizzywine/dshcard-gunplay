@@ -4,6 +4,9 @@ import { mat } from './materials.js';
 import { buildGun } from './gunmodel.js';
 import { textTexture } from './textures.js';
 
+// Shared by model proportions and AI hit/collision bounds.
+export const SOLDIER_BODY_WIDTH = 1.25;
+
 export const STYLES = {
   ally: { fab: 'fab_ally', vest: 0x5e5440, helmet: 0x5a513d, head: 'helmet', nvg: true, face: 'skin' },
   enemy: { fab: 'fab_enemy', vest: 0x262626, helmet: 0x1e1e1e, head: 'helmet', face: 'balaclava' },
@@ -31,7 +34,8 @@ export function createSoldierModel(styleName, weaponId, attachments = {}, camo =
   const vest = vestMat(st.vest);
   const helm = vestMat(st.helmet);
   const root = new THREE.Group();
-  const hips = new THREE.Group(); hips.position.y = 0.95; root.add(hips);
+  const hips = new THREE.Group(); hips.position.y = 0.95;
+  hips.scale.set(SOLDIER_BODY_WIDTH, 1, SOLDIER_BODY_WIDTH); root.add(hips);
   const parts = { root, hips };
 
   const mkLeg = (side) => {
@@ -55,6 +59,8 @@ export function createSoldierModel(styleName, weaponId, attachments = {}, camo =
   const belt = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.07, 0.3), mat('glove')); belt.position.y = 0.05; torso.add(belt);
 
   const neck = new THREE.Group(); neck.position.y = 0.6; torso.add(neck); parts.neck = neck;
+  // Keep the head and its existing hit sphere at their original size.
+  neck.scale.set(1 / SOLDIER_BODY_WIDTH, 1, 1 / SOLDIER_BODY_WIDTH);
   const headMat = st.face === 'balaclava' ? mat('glove') : mat(st.face);
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.11, 16, 12), headMat); head.position.y = 0.1; head.scale.set(0.95, 1.1, 1); neck.add(head);
   parts.head = head;

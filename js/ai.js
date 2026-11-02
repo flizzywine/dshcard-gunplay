@@ -1,6 +1,6 @@
 // AI 士兵
 import * as THREE from 'three';
-import { createSoldierModel, animateSoldier, makeNameTag, applyFlashTex } from './soldier.js';
+import { createSoldierModel, animateSoldier, makeNameTag, applyFlashTex, SOLDIER_BODY_WIDTH } from './soldier.js';
 import { computeStats, WEAPONS } from './data.js';
 import { fireHitscan, Projectile } from './combat.js';
 import { clamp, damp, rand, angleDiff, raySphere, rayAABB, spreadDir, DEG, pick } from './util.js';
@@ -54,7 +54,7 @@ export class Bot {
     this.accuracyMul = o.accuracyMul || 1;
     this.patrol = o.patrol || null; this.patrolI = 0;
     this.assaultTarget = o.assaultTarget || null;
-    this.radius = 0.35;
+    this.radius = 0.35 * SOLDIER_BODY_WIDTH;
     this.dmgTaken = new Map();
   }
   get crouch() { return this.anim.crouch; }
@@ -68,10 +68,11 @@ export class Bot {
     let t = raySphere(o.x, o.y, o.z, d.x, d.y, d.z, this.pos.x, hy, this.pos.z, 0.15);
     if (t >= 0 && t < maxT) return { t, part: 'head' };
     const lt = 0.9 - c * 0.35;
-    const b = { x0: this.pos.x - 0.27, x1: this.pos.x + 0.27, y0: this.pos.y + lt, y1: hy - 0.13, z0: this.pos.z - 0.27, z1: this.pos.z + 0.27 };
+    const bodyRadius = 0.27 * SOLDIER_BODY_WIDTH, legRadius = 0.2 * SOLDIER_BODY_WIDTH;
+    const b = { x0: this.pos.x - bodyRadius, x1: this.pos.x + bodyRadius, y0: this.pos.y + lt, y1: hy - 0.13, z0: this.pos.z - bodyRadius, z1: this.pos.z + bodyRadius };
     t = rayAABB(o.x, o.y, o.z, d.x, d.y, d.z, b, maxT);
     if (t >= 0) return { t, part: 'body' };
-    const l = { x0: this.pos.x - 0.2, x1: this.pos.x + 0.2, y0: this.pos.y, y1: this.pos.y + lt, z0: this.pos.z - 0.2, z1: this.pos.z + 0.2 };
+    const l = { x0: this.pos.x - legRadius, x1: this.pos.x + legRadius, y0: this.pos.y, y1: this.pos.y + lt, z0: this.pos.z - legRadius, z1: this.pos.z + legRadius };
     t = rayAABB(o.x, o.y, o.z, d.x, d.y, d.z, l, maxT);
     if (t >= 0) return { t, part: 'legs' };
     return null;
