@@ -14,6 +14,7 @@ export class Player {
     this.vel = new THREE.Vector3();
     this.yaw = opts.yaw || 0; this.pitch = 0;
     this.maxHp = 100; this.hp = 100; this.alive = true;
+    this.prone = false; this.proneT = 0;
     this.crouchT = 0; this.crouching = false; this.sprinting = false; this.sliding = false; this.slideT = 0;
     this.onGround = true; this.eyeH = 1.62; this.eyeSmooth = this.pos.y + 1.62;
     this.dmgT = 99; this.shakeT = 0; this.shakeAmt = 0; this.punchV = 0; this.landDip = 0;
@@ -42,6 +43,7 @@ export class Player {
   }
   respawn(pos, yaw) {
     this.resetAim();
+    this.prone = false; this.proneT = 0; this.sprinting = false; this.slideT = 0;
     this.pos.copy(pos); this.vel.set(0, 0, 0); this.yaw = yaw; this.pitch = 0;
     this.hp = this.maxHp; this.alive = true; this.dmgT = 99; this.crouchT = 0; this.crouching = false; this.sliding = false;
     this.eyeSmooth = pos.y + 1.62; this.stats.streak = 0;
@@ -52,7 +54,13 @@ export class Player {
   }
   eyePos(out) { return out.set(this.pos.x, this.pos.y + this.curEye(), this.pos.z); }
   chestPos(out) { return out.set(this.pos.x, this.pos.y + this.curEye() - 0.4, this.pos.z); }
-  curEye() { return lerp(1.62, 1.05, this.crouchT); }
+  curEye() { return lerp(lerp(1.62, 1.05, this.crouchT), 0.42, this.proneT); }
+  leaveProne(crouch = false) {
+    const ceiling = this.game.world.ceilingHeight(this.pos.x, this.pos.z, this.pos.y, this.radius);
+    if (ceiling < this.pos.y + (crouch ? 1.25 : 1.8) + 0.05) return false;
+    this.prone = false; this.crouching = crouch;
+    return true;
+  }
   forward(out) { return out.set(-Math.sin(this.yaw) * Math.cos(this.pitch), Math.sin(this.pitch), -Math.cos(this.yaw) * Math.cos(this.pitch)); }
   hitTest(o, d, maxT) {
     const eye = this.curEye();
@@ -103,8 +111,17 @@ export class Player {
     this.yaw -= input.mdx * sens;
     this.pitch -= input.mdy * sens * (game.settings.invertY ? -1 : 1);
     this.pitch = clamp(this.pitch, -1.5, 1.5);
-    // 姿态
-    if (input.crouchPressed) {
+    // Stance changes check clearance before growing the collision capsule.
+    if (input.pronePressed) {
+      if (this.prone) this.leaveProne();
+      else if (this.onGround) {
+        this.prone = true; this.crouching = false;
+        this.sliding = false; this.slideT = 0; this.cancelSprint();
+      }
+    }
+    if (input.crouchPressed && this.prone) {
+      this.leaveProne(true);
+    } else if (input.crouchPressed) {
       if (this.sprinting && this.onGround && !this.sliding) {
         this.sliding = true; this.slideT = 0.75; this.crouching = true;
         const f = new THREE.Vector3(this.vel.x, 0, this.vel.z).normalize();
@@ -120,7 +137,7 @@ export class Player {
     const fx = (input.right ? 1 : 0) - (input.left ? 1 : 0);
     const fz = (input.fwd ? 1 : 0) - (input.back ? 1 : 0);
     this.sprintLock = (this.sprintLock || 0) - dt;
-    const wantSprint = input.sprint && fz > 0 && this.sprintLock <= 0 && !this.sliding;
+    const wantSprint = input.sprint && fz > 0 && this.sprintLock <= 0 && !this.sliding && !this.prone && this.proneT < 0.1;
     if (wantSprint && !this.sprinting) { this.sprinting = true; this.crouching = false; if (ws.state === 'reload' && !this.hasPerk('sleight')) ws.state = 'idle'; }
     if (!wantSprint) this.sprinting = false;
     // 头顶空间检查（蹲伏时不能站起）
@@ -128,10 +145,12 @@ export class Player {
       const c = world.ceilingHeight(this.pos.x, this.pos.z, this.pos.y, this.radius);
       if (c < this.pos.y + 1.85) this.crouching = true;
     }
+    this.proneT = damp(this.proneT, this.prone ? 1 : 0, 14, dt);
     this.crouchT = damp(this.crouchT, this.crouching ? 1 : 0, 12, dt);
     const mob = ws.w ? ws.w.stats.mobility : 1;
     let speed = 5.6 * mob;
-    if (this.sprinting) speed = 8.5 * mob * (this.hasPerk('doubletime') ? 1.08 : 1);
+    if (this.prone || this.proneT > 0.5) speed = 1.2 * mob;
+    else if (this.sprinting) speed = 8.5 * mob * (this.hasPerk('doubletime') ? 1.08 : 1);
     else if (this.crouchT > 0.5) speed = 2.8 * (this.hasPerk('doubletime') ? 1.3 : 1);
     speed *= lerp(1, this.sprinting ? 0.85 : 0.65, ws.adsT);
     if (this.stunT > 0) { this.stunT -= dt; speed *= 0.5; }
@@ -152,14 +171,17 @@ export class Player {
       this.vel.z += (wz * speed - this.vel.z) * k;
     }
     if (input.jumpPressed && this.onGround) {
-      if (this.crouching) this.crouching = false;
+      if (this.prone) this.leaveProne();
+      else if (this.crouching) {
+        if (world.ceilingHeight(this.pos.x, this.pos.z, this.pos.y, this.radius) >= this.pos.y + 1.85) this.crouching = false;
+      }
       else { this.vel.y = 5.6; this.onGround = false; this.sliding = false; }
     }
     this.vel.y -= 18 * dt;
     // 积分与碰撞
     const px = this.pos.x, pz = this.pos.z;
     this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
-    const h = lerp(1.8, 1.25, this.crouchT);
+    const h = lerp(lerp(1.8, 1.25, this.crouchT), 0.6, this.proneT);
     world.collide(this.pos, this.vel, this.radius, h);
     this.pos.y += this.vel.y * dt;
     const g = world.groundHeight(this.pos.x, this.pos.z, this.pos.y - this.vel.y * dt, this.radius);
@@ -176,7 +198,7 @@ export class Player {
     if (this.pos.y + h > ceil && this.vel.y > 0) { this.vel.y = 0; this.pos.y = ceil - h; }
     // 脚步
     const moved = Math.hypot(this.pos.x - px, this.pos.z - pz);
-    if (this.onGround && !this.sliding) {
+    if (this.onGround && !this.sliding && !this.prone) {
       this.stepDist += moved;
       const stride = this.sprinting ? 2.0 : 1.6;
       if (this.stepDist > stride) {
