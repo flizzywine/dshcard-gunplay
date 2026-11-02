@@ -27,6 +27,7 @@ export class Player {
     this.protectedUntil = (game.time || 0) + 1.5;
     this.interactHold = 0;
     this.radius = 0.35;
+    this.aimLatched = false;
   }
   hasPerk(id) { return this.perks.has(id); }
   equip(loadout) {
@@ -40,6 +41,7 @@ export class Player {
     this.loadout = loadout;
   }
   respawn(pos, yaw) {
+    this.resetAim();
     this.pos.copy(pos); this.vel.set(0, 0, 0); this.yaw = yaw; this.pitch = 0;
     this.hp = this.maxHp; this.alive = true; this.dmgT = 99;
     this.protectedUntil = this.game.time + 1.5; this.crouchT = 0; this.crouching = false; this.sliding = false;
@@ -76,7 +78,7 @@ export class Player {
     if (!info.burn || Math.random() < 0.1) this.game.audio.hurt();
     this.punch(0.02);
     if (this.hp <= 0) {
-      this.hp = 0; this.alive = false; this.stats.deaths++;
+      this.hp = 0; this.alive = false; this.resetAim(); this.stats.deaths++;
       this.game.onKill(info.attacker, this, info.weapon, info.head);
       return true;
     }
@@ -85,10 +87,24 @@ export class Player {
   shake(a) { this.shakeAmt = Math.max(this.shakeAmt, a); this.shakeT = 0.6; }
   punch(a) { this.punchV += a; }
   cancelSprint() { this.sprinting = false; this.sprintLock = 0.25; }
+  resetAim() { this.aimLatched = false; }
+  resolveAim(input) {
+    if (this.game.settings.aimMode !== 'toggle') {
+      this.resetAim();
+      return !!input.ads;
+    }
+    if (input.cancelAim || (input.sprint && input.fwd)) {
+      this.resetAim();
+      return false;
+    }
+    if (input.adsPressed) this.aimLatched = !this.aimLatched;
+    return this.aimLatched;
+  }
 
   update(dt, input) {
     const game = this.game, world = game.world;
     if (!this.alive) return;
+    input = { ...input, ads: this.resolveAim(input) };
     // 视角
     const ws = this.ws;
     const zoom = lerp(1, ws.w ? ws.w.stats.zoom : 1, ws.adsT);

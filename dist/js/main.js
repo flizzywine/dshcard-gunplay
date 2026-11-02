@@ -62,7 +62,7 @@ function readSaved(key, fallback) { try { return JSON.parse(localStorage.getItem
 class Game {
   constructor() {
     this.voxelLab = new URLSearchParams(globalThis.location?.search || '').get('mode') === 'voxel';
-    this.settings = Object.assign({ sens: 1.0, adsSens: 0.9, fov: 78, quality: 'low', volume: 0.8, voice: true, invertY: false, showFps: true }, readSaved('pixel_rush_settings', {}));
+    this.settings = Object.assign({ sens: 1.0, adsSens: 0.9, aimMode: 'hold', fov: 78, quality: 'low', volume: 0.8, voice: true, invertY: false, showFps: true }, readSaved('pixel_rush_settings', {}));
     this.profile = Object.assign({ xp: 0, classes: JSON.parse(JSON.stringify(DEFAULT_CLASSES)), streaks: [...DEFAULT_STREAKS], selClass: 0, campaignBest: null }, {});
     if (!this.profile.classes || this.profile.classes.length < 5) this.profile.classes = JSON.parse(JSON.stringify(DEFAULT_CLASSES));
     this.state = 'loading';
@@ -213,6 +213,7 @@ class Game {
   pause(v) {
     if (this.state !== 'play') return;
     this.paused = v;
+    if (v) this.player?.resetAim?.();
     this.input.keys = {}; this.input.buttons = 0; this.input.pressed = {}; this.input.mdx = 0; this.input.mdy = 0;
     if (v) { this.menu.showPause(); if (document.pointerLockElement) document.exitPointerLock(); }
     else { this.menu.hide(); this.lock(); }

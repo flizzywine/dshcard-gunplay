@@ -39,6 +39,7 @@ export class VoxelMatch extends MPMatch {
       this.game.hud.popup(this.editMode ? '建造：左键拆块 · 右键放木块 · 距离 8 米' : '战斗：左键射击 · 右键瞄准', '#86dce3');
     }
     if (!this.editMode) return;
+    inp.cancelAim = true;
     if (inp.firePressed || inp.adsPressed) {
       const g = this.game;
       const changed = g.world.edit(g.camera.position, g.camera.getWorldDirection(new THREE.Vector3()), !!inp.adsPressed);

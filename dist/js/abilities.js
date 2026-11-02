@@ -113,7 +113,7 @@ export class Abilities {
     if(this.mounted)return this.exit(false);
     if(!m?.alive||m.pos.distanceTo(p.pos)>4){this.notify('靠近机甲后按 E · B 召唤');return false;}
     if(g.world.lineBlocked(p.eyePos(V()),m.chestPos(V()))){this.notify('入口被遮挡');return false;}
-    this.lastSafe=p.pos.clone();this.mounted=true;m.piloted=true;m.mesh.visible=false;
+    this.lastSafe=p.pos.clone();this.mounted=true;m.piloted=true;m.mesh.visible=false;p.resetAim?.();
     p.mountedMech=m;p.targetable=false;p.pos.copy(m.pos);p.vel.set(0,0,0);p.crouching=false;p.crouchT=0;p.sliding=false;
     p.protectedUntil=g.time; p.ws.adsT=0;g.scopeState=null;
     this.notify('机甲驾驶 · 左键重机炮 / 右键聚焦 · E 离舱');return true;
