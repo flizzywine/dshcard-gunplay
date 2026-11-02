@@ -470,7 +470,7 @@ export class Menu {
     const inGame = from === 'pause';
     if (!inGame) this.setCam('lobby');
     const rng = (k, label, min, max, step, fmt = v => v) => `<div class="set-row"><span>${label}</span><div style="display:flex;align-items:center;gap:12px"><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${S[k]}"><span class="val" data-v="${k}">${fmt(S[k])}</span></div></div>`;
-    const sensitivity = (k, label, max) => `<div class="set-row"><span>${label}</span><div style="display:flex;align-items:center;gap:12px"><input aria-label="${label}滑块" type="range" data-k="${k}" min="0.1" max="${max}" step="0.01" value="${S[k]}"><input aria-label="${label}数值" type="number" data-number="${k}" min="0.1" max="${max}" step="0.01" value="${S[k]}" style="width:84px;padding:8px;background:#171c20;color:#fff;border:1px solid #59636c"></div></div>`;
+    const sensitivity = (k, label, max) => `<div class="set-row"><span>${label}</span><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><button class="btn ghost small" aria-label="${label}降低20%" data-adjust="${k}" data-factor="0.8">−20%</button><input aria-label="${label}滑块" type="range" data-k="${k}" min="0.1" max="${max}" step="0.01" value="${S[k]}"><input aria-label="${label}数值" type="number" data-number="${k}" min="0.1" max="${max}" step="0.01" value="${S[k]}" style="width:84px;padding:8px;background:#171c20;color:#fff;border:1px solid #59636c"><button class="btn ghost small" aria-label="${label}提高25%" data-adjust="${k}" data-factor="1.25">+25%</button></div></div>`;
     const tog = (k, label) => `<div class="set-row"><span>${label}</span><div class="seg" data-t="${k}"><div data-v="1" class="${S[k] ? 'sel' : ''}">开</div><div data-v="0" class="${!S[k] ? 'sel' : ''}">关</div></div></div>`;
     const fmts = { sens: v => (+v).toFixed(2), adsSens: v => (+v).toFixed(2), fov: v => v, volume: v => Math.round(v * 100) };
     const r = this.render(`
@@ -522,6 +522,7 @@ export class Menu {
       });
       inp.addEventListener('change', () => setSensitivity(inp.dataset.number, Number.isFinite(inp.valueAsNumber) ? inp.valueAsNumber : S[inp.dataset.number]));
     });
+    this.on(r, '[data-adjust]', el => setSensitivity(el.dataset.adjust, S[el.dataset.adjust] * +el.dataset.factor));
     this.on(r, '[data-sens]', el => setSensitivity('sens', +el.dataset.sens));
     this.on(r, '[data-a=reset-sens]', () => { setSensitivity('sens', 1); setSensitivity('adsSens', .9); });
     this.on(r, '[data-a=test-sens]', () => this.resume());
@@ -550,6 +551,7 @@ export class Menu {
         <div class="mbtn" data-a="resume"><div class="ico">▶</div><div class="mt">继续游戏</div></div>
         <div class="mbtn" data-a="class"><div class="ico">⚙</div><div class="mt">更换配装</div></div>
         <div class="mbtn" data-a="restart"><div class="ico">⟲</div><div class="mt">重新开始对局</div></div>
+        <div class="mbtn" data-a="sensitivity"><div class="ico">◎</div><div class="mt">灵敏度调试</div></div>
         <div class="mbtn" data-a="settings"><div class="ico">☰</div><div class="mt">设置</div></div>
         <div class="mbtn" data-a="quit"><div class="ico">✕</div><div class="mt">退出到主菜单</div></div>
         <div style="margin-top:20px;font-size:12px;color:#777">按 Esc 继续</div>
@@ -557,6 +559,11 @@ export class Menu {
     this.on(r, '[data-a=resume]', () => this.resume());
     this.on(r, '[data-a=class]', () => this.showClassSelect(true));
     this.on(r, '[data-a=restart]', () => { const cfg = g.mode.cfg; g.paused = false; g.startGame('mp', cfg); });
+    this.on(r, '[data-a=sensitivity]', () => {
+      this.showSettings('pause');
+      const field = this.el.querySelector('[data-number="sens"]');
+      field.focus(); field.select();
+    });
     this.on(r, '[data-a=settings]', () => this.showSettings('pause'));
     this.on(r, '[data-a=quit]', () => g.exitToMenu());
   }
