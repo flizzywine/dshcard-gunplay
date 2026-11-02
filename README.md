@@ -102,3 +102,15 @@ js/effects.js / combat.js / audio.js / hud.js  特效、弹道判定、合成音
 此仓库当前使用 Three.js 版本；旧体素版保留在 Git 历史中。DSH Tavern 人物卡集成仍是后续计划。
 
 本地启动：`python3 -m http.server 8089 --bind 127.0.0.1`。
+
+## DSH Tavern 人物卡
+
+`dsh/` 包含人物卡设定与随卡插件。通过 Tavern 公开的 `openOverlay` 接口运行内置游戏，不依赖 8089 服务，不自动请求模型；目前没有 LLM 队友控制。
+
+构建需要本机 DSH Tavern 源码与已安装的构建依赖（使用其卡包写入器与 esbuild）：
+
+```bash
+DSH_TAVERN_SOURCE=/path/to/dsh-tavern node scripts/build-dsh-card.mjs
+```
+
+默认输出 `dist/现代战线-0.1.0.dshcard`。在酒馆人物卡库导入，启用随卡插件，刷新页面并用这张卡开局，点击「进入战场」。桌面键鼠操作；Esc 暂停，顶部「返回酒馆」关闭战场。关闭会结束当前比赛，设置与配装保存在本机浏览器。完整游戏资源随卡分发，不需要素材包或舞台开关。
