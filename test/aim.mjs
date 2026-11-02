@@ -19,4 +19,4 @@ const original = computeStats('m4'), tuned = tunePlayerWeapon(computeStats('m4')
 for (const key of ['dmgNear', 'dmgFar', 'mag', 'reserve', 'rpm', 'reload']) assert.equal(tuned[key], original[key], key);
 console.log('PASS toggle/hold aim, reset and unchanged original weapon economy.');
 
-assert(tuned.ads >= .1 && tuned.ads < original.ads * .7, 'ADS transition is substantially faster');
+assert(tuned.ads >= .07 && tuned.ads < original.ads * .5, 'ADS transition is substantially faster');
