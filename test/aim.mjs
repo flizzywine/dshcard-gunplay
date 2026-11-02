@@ -8,11 +8,15 @@ assert(p.resolveAim({ adsPressed: true, ads: true }));
 assert(p.resolveAim({ ads: false, fire: true }), 'RMB release/LMB fire must keep toggle aim');
 assert(!p.resolveAim({ adsPressed: true }), 'second click exits');
 p.resolveAim({ adsPressed: true });
-assert(!p.resolveAim({ sprint: true, fwd: true }), 'sprint clears aim');
+assert(!p.resolveAim({ sprint: true, sprintPressed: true, fwd: true }), 'sprint clears aim');
 p.resolveAim({ adsPressed: true }); p.resetAim();
 assert(!p.resolveAim({}), 'pause/respawn reset clears latch');
+assert(p.resolveAim({ adsPressed: true, sprint: true, fwd: true }), 'RMB takes priority over held sprint');
+assert(p.resolveAim({ sprint: true, fwd: true }), 'held Shift cannot cancel aim on the next frame');
 p.game.settings.aimMode = 'hold';
 assert(p.resolveAim({ ads: true })); assert(!p.resolveAim({ ads: false }));
 const original = computeStats('m4'), tuned = tunePlayerWeapon(computeStats('m4'));
 for (const key of ['dmgNear', 'dmgFar', 'mag', 'reserve', 'rpm', 'reload']) assert.equal(tuned[key], original[key], key);
 console.log('PASS toggle/hold aim, reset and unchanged original weapon economy.');
+
+assert(tuned.ads >= .1 && tuned.ads < original.ads * .7, 'ADS transition is substantially faster');

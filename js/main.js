@@ -167,7 +167,10 @@ class Game {
       I.mdx += e.movementX || 0; I.mdy += e.movementY || 0;
     });
     window.addEventListener('mousedown', e => {
-      if (this.state === 'play' && !this.paused && document.pointerLockElement !== cv && !this.menu.overlayOpen && e.target === cv) { this.lock(); return; }
+      if (this.state === 'play' && !this.paused && document.pointerLockElement !== cv && !this.menu.overlayOpen && (e.target === cv || document.getElementById('clickToPlay').contains(e.target))) {
+        if (e.button === 2) { this.pendingAim = true; I.buttons |= 4; }
+        this.lock(); return;
+      }
       if (document.pointerLockElement === cv) { I.buttons |= (1 << e.button); I.pressed['Mouse' + e.button] = true; }
     });
     window.addEventListener('mouseup', e => { I.buttons &= ~(1 << e.button); });
@@ -176,10 +179,13 @@ class Game {
     document.addEventListener('pointerlockchange', () => {
       const locked = document.pointerLockElement === cv;
       I.mdx = 0; I.mdy = 0;
+      if (locked && this.pendingAim) { I.pressed.Mouse2 = true; }
+      this.pendingAim = false;
       document.getElementById('clickToPlay').classList.add('hidden');
       if (!locked && this.state === 'play' && !this.paused && !this.dead && !this.menu.overlayOpen && !this.ending) this.pause(true);
       if (!locked) { I.buttons = 0; I.pressed = {}; this.player?.resetAim(); }
     });
+    document.addEventListener('pointerlockerror', () => { this.pendingAim = false; });
     document.getElementById('clickToPlay').addEventListener('click', () => this.lock());
     document.getElementById('btnChangeClass').addEventListener('click', () => this.menu.showClassSelect());
   }
@@ -199,7 +205,7 @@ class Game {
   pause(v) {
     if (this.state !== 'play') return;
     this.paused = v;
-    if (v) this.player?.resetAim();
+    if (v) { this.pendingAim = false; this.player?.resetAim(); }
     if (v) { this.menu.showPause(); if (document.pointerLockElement) document.exitPointerLock(); }
     else { this.menu.hide(); this.lock(); }
   }
@@ -209,7 +215,7 @@ class Game {
     const I = this.input, K = I.keys, P = I.pressed;
     const s = {
       fwd: K.KeyW, back: K.KeyS, left: K.KeyA, right: K.KeyD,
-      sprint: K.ShiftLeft || K.ShiftRight, jumpPressed: P.Space, crouchPressed: P.KeyC || P.ControlLeft,
+      sprint: K.ShiftLeft || K.ShiftRight, sprintPressed: P.ShiftLeft || P.ShiftRight, jumpPressed: P.Space, crouchPressed: P.KeyC || P.ControlLeft,
       fire: !!(I.buttons & 1), ads: !!(I.buttons & 4),
       reloadPressed: P.KeyR, swapPressed: I.wheel !== 0, slot1: P.Digit1, slot2: P.Digit2,
       meleePressed: P.KeyV || P.Mouse3, lethalPressed: P.KeyG, lethal: K.KeyG, tacticalPressed: P.KeyQ, tactical: K.KeyQ,

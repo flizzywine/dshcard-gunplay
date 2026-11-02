@@ -90,11 +90,14 @@ export class Player {
       this.resetAim();
       return !!input.ads;
     }
-    if (input.cancelAim || (input.sprint && input.fwd)) {
+    if (input.cancelAim) {
       this.resetAim();
       return false;
     }
-    if (input.adsPressed) this.aimLatched = !this.aimLatched;
+    if (input.adsPressed) {
+      this.aimLatched = !this.aimLatched;
+      if (this.aimLatched) this.cancelSprint();
+    } else if (input.sprintPressed && input.fwd) this.resetAim();
     return this.aimLatched;
   }
 
@@ -126,7 +129,7 @@ export class Player {
     const fx = (input.right ? 1 : 0) - (input.left ? 1 : 0);
     const fz = (input.fwd ? 1 : 0) - (input.back ? 1 : 0);
     this.sprintLock = (this.sprintLock || 0) - dt;
-    const wantSprint = input.sprint && fz > 0 && this.sprintLock <= 0 && ws.adsT < 0.3 && !this.sliding;
+    const wantSprint = !input.ads && input.sprint && fz > 0 && this.sprintLock <= 0 && ws.adsT < 0.3 && !this.sliding;
     if (wantSprint && !this.sprinting) { this.sprinting = true; this.crouching = false; if (ws.state === 'reload' && !this.hasPerk('sleight')) ws.state = 'idle'; }
     if (!wantSprint) this.sprinting = false;
     // 头顶空间检查（蹲伏时不能站起）

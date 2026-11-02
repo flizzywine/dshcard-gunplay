@@ -10,6 +10,7 @@ const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quater
 
 export function tunePlayerWeapon(stats) {
   // Preserve the accepted recoil calibration without importing damage/ammo buffs.
+  stats.ads = Math.max(.1, stats.ads * .6);
   stats.recoilV *= .22; stats.recoilH *= .22;
   return stats;
 }
