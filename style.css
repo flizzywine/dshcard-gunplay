@@ -178,6 +178,7 @@ html, body { position: fixed; inset: 0; }
 #hitmarker i:nth-child(2) { transform: translate(6px,-14px) rotate(45deg); }
 #hitmarker i:nth-child(3) { transform: translate(-8px,4px) rotate(45deg); }
 #hitmarker i:nth-child(4) { transform: translate(6px,4px) rotate(-45deg); }
+#hitmarker.head i { background: #ffd479; }
 #hitmarker.kill i { background: #ff3b30; }
 #scope { position: absolute; inset: 0; }
 .scope-hole { position: absolute; left: 50%; top: 50%; width: 88vh; height: 88vh; transform: translate(-50%,-50%); border-radius: 50%; box-shadow: 0 0 0 200vmax #000, inset 0 0 60px 30px rgba(0,0,0,.9); }

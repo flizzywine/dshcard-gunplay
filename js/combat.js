@@ -28,17 +28,53 @@ export function traceBullet(game, shooter, o, d, maxDist = 400) {
   return { t: best, point, ent, part, world: ent ? null : wh };
 }
 
+// Personal combat score is independent of objective/team score.
+const suppressionAwards = new WeakMap();
+function suppressNearMiss(game, shooter, o, d, trace) {
+  if (shooter !== game.player) return;
+  const now = performance.now();
+  let awards = suppressionAwards.get(shooter);
+  if (!awards) { awards = new WeakMap(); suppressionAwards.set(shooter, awards); }
+  for (const e of game.entities) {
+    if (!e.alive || e === shooter || e === trace.ent || e.team === shooter.team || !e.chestPos || !e.eyePos) continue;
+    // Only the unobstructed travelled segment can suppress someone.
+    let near = false;
+    for (const sample of [e.chestPos(new THREE.Vector3()), e.eyePos(new THREE.Vector3())]) {
+      const t = sample.clone().sub(o).dot(d);
+      if (t <= 0.5 || t >= trace.t) continue;
+      const closest = o.clone().addScaledVector(d, t);
+      if (closest.distanceToSquared(sample) <= 1 && !game.world.lineBlocked(closest, sample)) { near = true; break; }
+    }
+    if (!near) continue;
+    e.suppressedUntil = now + 1200;
+    if (now - (awards.get(e) ?? -Infinity) < 2000) continue;
+    awards.set(e, now);
+    shooter.stats.score += 5;
+    game.hud.combatScore('压制', 5);
+  }
+}
+
 // 统一的射击：返回命中信息
 export function fireHitscan(game, shooter, o, d, stats, weaponName, opts = {}) {
   const r = traceBullet(game, shooter, o, d, opts.maxDist || 400);
   if (r.ent) {
     const dmg = damageAt(stats, r.t, r.part) * (opts.dmgMul || 1);
+    const hpBefore = r.ent.hp;
     const killed = r.ent.takeDamage(dmg, { attacker: shooter, head: r.part === 'head', dir: d, weapon: weaponName, point: r.point });
     game.effects.blood(r.point, d, r.part === 'head');
     r.killed = killed; r.dmg = dmg;
+    if (shooter === game.player) {
+      const dealt = Math.max(0, hpBefore - Math.max(0, r.ent.hp));
+      const points = Math.round(dealt);
+      if (points > 0) {
+        shooter.stats.score += points;
+        game.hud.combatScore(r.part === 'head' ? '爆头命中' : '命中', points);
+      }
+    }
   } else if (r.world) {
     game.effects.impact(r.point, r.world.normal, r.world.box.mat || 'concrete');
   }
+  suppressNearMiss(game, shooter, o, d, r);
   return r;
 }
 

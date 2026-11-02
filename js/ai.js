@@ -406,6 +406,7 @@ export class Bot {
     const tv = target.vel ? Math.hypot(target.vel.x, target.vel.z) : 0;
     this.aimSettle = Math.max(0, (this.aimSettle || 0) - 0.18);
     let spread = this.diff.spread * (1 + tv / 6 * 0.8) * (1 + Math.hypot(this.vel.x, this.vel.z) / 5 * 0.4) * (1 + this.aimSettle * 1.2) * this.accuracyMul;
+    if (performance.now() < (this.suppressedUntil || 0)) spread *= 1.35;
     if (dist > 35) spread *= 0.8;
     if (st.type === 'sniper') spread *= 0.5;
     const dir = aim.sub(eye).normalize();

@@ -32,6 +32,7 @@ export class HUD {
     strip.innerHTML = html;
   }
   reset() {
+    if (this.combatLines) { for (const entry of this.combatLines.values()) clearTimeout(entry.timer); this.combatLines.clear(); }
     $('killfeed').innerHTML = ''; $('popups').innerHTML = ''; $('subtitles').innerHTML = ''; $('objective').innerHTML = '';
     $('markers').innerHTML = ''; $('dmgDirs').innerHTML = ''; this.dmgDirs = []; this.subQueue = []; this.subT = 0;
     $('fade').style.opacity = 0; $('flashOverlay').style.opacity = 0; this.flashT = 0;
@@ -41,6 +42,7 @@ export class HUD {
   hitmarker(kill, head) {
     const h = $('hitmarker');
     h.classList.toggle('kill', !!kill);
+    h.classList.toggle('head', !!head && !kill);
     h.style.opacity = 1; this.hitT = kill ? 0.35 : 0.18;
     h.style.transform = `scale(${kill ? 1.3 : 1})`;
   }
@@ -72,6 +74,22 @@ export class HUD {
     p.appendChild(d);
     while (p.children.length > 5) p.firstChild.remove();
     setTimeout(() => d.remove(), 2200);
+  }
+  combatScore(label, points) {
+    // Accumulate sustained fire in one line rather than flooding the kill medals.
+    this.combatLines ||= new Map();
+    let entry = this.combatLines.get(label);
+    if (!entry || !entry.el.isConnected) {
+      if (entry) clearTimeout(entry.timer);
+      const el = document.createElement('div'); el.className = 'pop';
+      el.style.color = label === '压制' ? '#9cc8da' : label === '爆头命中' ? '#ffd479' : '#fff';
+      $('popups').appendChild(el);
+      entry = { el, points: 0, timer: null }; this.combatLines.set(label, entry);
+    }
+    entry.points += points;
+    entry.el.textContent = `${label} +${entry.points}`;
+    clearTimeout(entry.timer);
+    entry.timer = setTimeout(() => { entry.el.remove(); this.combatLines.delete(label); }, 1200);
   }
   announce(title, sub = '', dur = 3) {
     const a = $('announce');
