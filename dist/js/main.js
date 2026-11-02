@@ -64,7 +64,9 @@ class Game {
   constructor() {
     this.voxelLab = new URLSearchParams(globalThis.location?.search || '').get('mode') === 'voxel';
     this.voxelJinqu = this.voxelLab && new URLSearchParams(globalThis.location?.search || '').get('map') !== 'lab';
-    this.settings = Object.assign({ sens: 1.0, adsSens: 0.9, aimMode: 'hold', fov: 78, quality: 'low', volume: 0.8, voice: true, invertY: false, showFps: true }, readSaved('pixel_rush_settings', {}));
+    this.settings = Object.assign({ sens: 1.0, adsSens: 0.9, aimMode: 'hold', fov: 78, quality: 'low', volume: 0.8, voice: false, invertY: false, showFps: true }, readSaved('pixel_rush_settings', {}));
+    // Voice-over is temporarily muted, including previously saved voice:true.
+    this.settings.voice = false;
     this.profile = Object.assign({ xp: 0, classes: JSON.parse(JSON.stringify(DEFAULT_CLASSES)), streaks: [...DEFAULT_STREAKS], selClass: 0, campaignBest: null }, {});
     if (!this.profile.classes || this.profile.classes.length < 5) this.profile.classes = JSON.parse(JSON.stringify(DEFAULT_CLASSES));
     this.state = 'loading';

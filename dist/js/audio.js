@@ -4,7 +4,7 @@ export class Audio {
     this.ctx = null; this.enabled = true; this.volume = 0.8;
     this.listener = { x: 0, y: 0, z: 0, yaw: 0 };
     this.loops = {};
-    this.voice = true;
+    this.voice = false;
   }
   init() {
     if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
