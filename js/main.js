@@ -293,7 +293,8 @@ class Game {
     this.vmHemi.intensity = Math.max(0.9, def.env.hemi);
     this.vmScene.environment = this.scene.environment;
     this.vmScene.environmentIntensity = Math.max(0.4, def.env.envIntensity);
-    if (def.env.ambient) this.audio.loop('amb', def.env.ambient, def.env.ambient === 'rain' ? 0.12 : 0.08);
+    // Keep continuous background ambience off; combat effects remain enabled.
+    this.audio.stopLoop('amb');
     return w;
   }
   async startGame(kind, cfg) {
