@@ -100,7 +100,7 @@ export class Player {
     // 视角
     const ws = this.ws;
     const zoom = lerp(1, ws.w ? ws.w.stats.zoom : 1, ws.adsT);
-    const sens = game.settings.sens * 0.0022 * (ws.adsT > 0.5 ? game.settings.adsSens / Math.pow(zoom, 0.85) : 1);
+    const sens = game.settings.sens * 0.0022 * (ws.adsT > 0.5 ? 0.9 / Math.pow(zoom, 0.85) : 1);
     this.yaw -= input.mdx * sens;
     this.pitch -= input.mdy * sens * (game.settings.invertY ? -1 : 1);
     this.pitch = clamp(this.pitch, -1.5, 1.5);
