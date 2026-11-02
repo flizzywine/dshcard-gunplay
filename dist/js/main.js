@@ -171,24 +171,13 @@ class Game {
       }
     });
     window.addEventListener('keyup', e => { I.keys[e.code] = false; if (e.code === 'Tab' && this.state === 'play') this.hud.showScoreboard(false); });
-    // 鼠标位移过滤：浏览器（尤其 Windows 版 Chrome/Edge）在指针锁定下偶尔会给出
-    // 巨大的错误 movementX/Y（光标被拉回中心时的跳变、锁定刚生效时的第一帧等），
-    // 表现为视角"闪现"。这里丢弃锁定后最初的事件，并剔除相对近期平均值异常巨大的单次跳变。
-    const MF = this.mouseFilter = { since: 0, avg: 0, strikes: 0, lastT: 0 };
+    // Preserve displacement regardless of DPI or browser event coalescing.
+    // Magnitude-based filtering ate the first two events of legitimate flicks.
+    // Clear stale deltas at lock transitions instead of discarding fresh input.
     window.addEventListener('mousemove', e => {
       if (document.pointerLockElement !== cv) return;
-      const now = performance.now();
-      if (now - MF.since < 120) return;                       // 锁定刚生效：丢弃
-      const dx = e.movementX || 0, dy = e.movementY || 0;
-      const mag = Math.hypot(dx, dy);
-      if (now - MF.lastT > 250) MF.avg = Math.min(MF.avg, 30); // 静止一段后重新起算
-      MF.lastT = now;
-      const limit = Math.max(160, MF.avg * 7);
-      if (mag > limit) {
-        // 连续多次大位移说明是真实的快速甩枪，放行；孤立的跳变视为噪声丢弃
-        if (++MF.strikes < 3) return;
-      } else MF.strikes = 0;
-      MF.avg = MF.avg * 0.8 + Math.min(mag, limit) * 0.2;
+      const dx = e.movementX ?? 0, dy = e.movementY ?? 0;
+      if (!Number.isFinite(dx) || !Number.isFinite(dy)) return;
       I.mdx += dx; I.mdy += dy;
     });
     window.addEventListener('mousedown', e => {
@@ -200,7 +189,7 @@ class Game {
     window.addEventListener('contextmenu', e => e.preventDefault());
     document.addEventListener('pointerlockchange', () => {
       const locked = document.pointerLockElement === cv;
-      MF.since = performance.now(); MF.avg = 0; MF.strikes = 0; I.mdx = 0; I.mdy = 0;
+      I.mdx = 0; I.mdy = 0;
       document.getElementById('clickToPlay').classList.add('hidden');
       if (!locked && this.state === 'play' && !this.paused && !this.dead && !this.menu.overlayOpen && !this.ending) this.pause(true);
       if (!locked) { I.buttons = 0; }

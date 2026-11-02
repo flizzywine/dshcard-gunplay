@@ -6,7 +6,8 @@ const cases = [
   ...['combat', 'abilities', 'ai-v2'].map(n => ['--experimental-loader', './tests/three-loader.mjs', `tests/${n}.mjs`]),
   ...['map', 'ai-world-v2', 'voxel'].map(n => ['--experimental-loader', './tests/world-loader.mjs', `tests/${n}.mjs`]),
   ['--experimental-loader', './tests/integration-loader.mjs', 'tests/integration.mjs'],
-  ['--experimental-loader', './tests/review-v2-loader.mjs', 'tests/review-v2.mjs']
+  ['--experimental-loader', './tests/review-v2-loader.mjs', 'tests/review-v2.mjs'],
+  ['--experimental-loader', './tests/review-v2-loader.mjs', 'tests/mouse-input.mjs']
 ];
 for (const args of cases) {
   const result = spawnSync(process.execPath, args, { cwd: root, stdio: 'inherit' });
