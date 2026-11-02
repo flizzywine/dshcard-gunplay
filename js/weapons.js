@@ -126,14 +126,14 @@ export class WeaponSystem {
       if (this.stateT >= this.stateDur) this.state = 'idle';
     }
     // 瞄准
-    const wantAds = input.ads && !sprinting && !['switch', 'melee', 'throw', 'cook', 'use'].includes(this.state) && !(this.state === 'reload' && st.shellReload === false && false);
+    const wantAds = input.ads && !['switch', 'melee', 'throw', 'cook', 'use'].includes(this.state) && !(this.state === 'reload' && st.shellReload === false && false);
     this.adsT = clamp(this.adsT + (wantAds ? dt / st.ads : -dt / (st.ads * 0.8)), 0, 1);
-    this.sprintT = damp(this.sprintT, sprinting ? 1 : 0, 10, dt);
+    // Lowered sprint pose must not block aiming or firing while running.
+    this.sprintT = damp(this.sprintT, sprinting && !input.ads && !input.fire ? 1 : 0, 10, dt);
     // 射击
     const semi = st.fire !== 'auto';
     const fireInput = input.fire && (!semi || !this.triggerHeld);
-    if (input.fire && sprinting) pl.cancelSprint();
-    if (fireInput && this.sprintT < 0.35 && this.state === 'idle' && this.cool <= 0 && this.cycleT <= 0 && !pl.sliding) {
+    if (fireInput && this.state === 'idle' && this.cool <= 0 && this.cycleT <= 0 && !pl.sliding) {
       if (w.mag > 0) this.fire();
       else if (!this.triggerHeld) { game.audio.empty(); if (w.reserve > 0) this.startReload(); }
     } else if (fireInput && this.state === 'reload' && st.shellReload && w.mag > 0) {

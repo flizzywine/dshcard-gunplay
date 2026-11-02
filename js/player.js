@@ -88,8 +88,7 @@ export class Player {
   resolveAim(input) {
     if (input.adsPressed) {
       this.aimLatched = !this.aimLatched;
-      if (this.aimLatched) this.cancelSprint();
-    } else if (input.sprintPressed && input.fwd) this.resetAim();
+    }
     return this.aimLatched;
   }
 
@@ -121,7 +120,7 @@ export class Player {
     const fx = (input.right ? 1 : 0) - (input.left ? 1 : 0);
     const fz = (input.fwd ? 1 : 0) - (input.back ? 1 : 0);
     this.sprintLock = (this.sprintLock || 0) - dt;
-    const wantSprint = !input.ads && input.sprint && fz > 0 && this.sprintLock <= 0 && ws.adsT < 0.3 && !this.sliding;
+    const wantSprint = input.sprint && fz > 0 && this.sprintLock <= 0 && !this.sliding;
     if (wantSprint && !this.sprinting) { this.sprinting = true; this.crouching = false; if (ws.state === 'reload' && !this.hasPerk('sleight')) ws.state = 'idle'; }
     if (!wantSprint) this.sprinting = false;
     // 头顶空间检查（蹲伏时不能站起）
@@ -134,7 +133,7 @@ export class Player {
     let speed = 5.6 * mob;
     if (this.sprinting) speed = 8.5 * mob * (this.hasPerk('doubletime') ? 1.08 : 1);
     else if (this.crouchT > 0.5) speed = 2.8 * (this.hasPerk('doubletime') ? 1.3 : 1);
-    speed *= lerp(1, 0.65, ws.adsT);
+    speed *= lerp(1, this.sprinting ? 0.85 : 0.65, ws.adsT);
     if (this.stunT > 0) { this.stunT -= dt; speed *= 0.5; }
     const sy = Math.sin(this.yaw), cy = Math.cos(this.yaw);
     let wx = fx * cy - fz * sy, wz = -fx * sy - fz * cy;
