@@ -1,116 +1,82 @@
-# 现代战线 MODERN FRONTLINE
+# dshcard-gunplay · 现代战线
 
-一款在浏览器里运行的现代军事题材第一人称射击游戏（原创致敬作品），用 Three.js 写成，**没有用到任何外部美术或音频素材**：所有纹理（包括法线和粗糙度贴图）、模型和音效都由程序实时生成。
+**一张导入 DSH Tavern 就能玩的枪战人物卡。** 内置完整 Three.js 游戏和随卡插件，在酒馆内点击「进入战场」即可开始 AI 对战。
 
-## 开发背景
+[![下载 DSH 人物卡](https://img.shields.io/badge/下载人物卡-.dshcard-2ea44f?style=for-the-badge)](https://github.com/flizzywine/dshcard-gunplay/releases/latest/download/dshcard-gunplay.dshcard)
 
-本游戏全程仅通过 **Claude Opus 5.5** 的**一轮对话**生成完成。
+**[一键下载最新版人物卡](https://github.com/flizzywine/dshcard-gunplay/releases/latest/download/dshcard-gunplay.dshcard)** · [版本与更新记录](https://github.com/flizzywine/dshcard-gunplay/releases) · [DSH Tavern](https://github.com/flizzywine/dsh-tavern)
 
-- 实机游玩视频：[B 站 BV1poaP6YEKy](https://www.bilibili.com/video/BV1poaP6YEKy)
+## 怎么玩
 
-## 运行方法
+1. 下载上面的 `dshcard-gunplay.dshcard`。
+2. 打开 DSH Tavern，在「人物卡库 → 导入人物卡」选择该文件，确认随卡插件已启用。
+3. 刷新酒馆页面，用「现代战线 · 枪战试验场」人物卡开局。
+4. 点击 **进入战场**，选择地图、模式和配装，开始比赛。
 
-游戏使用 ES Module，必须通过本地 HTTP 服务器打开，直接双击 html 文件打不开：
+无需下载源码、安装 Three.js 或另开游戏服务器。游戏资源全部随卡打包，进入战场不会自动调用 LLM。已在桌面 Chrome 的 DSH Tavern 中验证可玩；需要键盘、鼠标及支持 WebGL2 的浏览器。
 
-```bash
-cd dshcard-gunplay
-python3 -m http.server 8080
-# 然后在浏览器打开 http://localhost:8080
-```
+按 **Esc** 暂停并释放鼠标，再点击顶部 **返回酒馆**。关闭战场会结束当前比赛，灵敏度、配装等设置保存在当前浏览器。
 
-推荐使用最新版 Chrome 或 Edge，并开启独立显卡。如果帧数偏低，可以在「设置」里调低画面质量。
+## 卡里有什么
 
-## 内容
+- **四张地图**：沙丘镇、寒霜炼厂、霓虹街区、货柜场。
+- **三种 AI 对战模式**：团队死斗、据点占领、自由混战；目前不支持真人联网对战。
+- **12 把武器**、枪匠配件、自定义配装、投掷物和连杀奖励。
+- 右键一键持续开镜，支持跑动中开镜射击、蹲伏、滑铲和趴下。
+- 可调鼠标灵敏度、后坐力强度、子弹随机散布；设置自动保存。
+- 命中、爆头、击杀反馈与个人加分，近距离擦弹触发压制反馈。
+- 背景环境循环音关闭、配音默认关闭，保留枪声与脚步等战斗音效。
 
-### 多人对战（对战 AI）
-- **模式**：团队死斗、占领（A/B/C 三个据点）、自由混战
-- **地图**：
-  - 沙丘镇：沙漠，白天
-  - 寒霜炼厂：暴风雪
-  - 霓虹街区：雨夜都市
-  - 货柜场：黄昏港口
-- **AI**：分三档难度，会寻路、找掩体、投雷、夺点，也会使用连杀奖励
-- **Perk**：3 个栏位共 12 项，包括双倍时间、拾荒者、爆破专家、冷血、强硬路线、火力过载、幽灵、速愈、快手、振奋、静步、高度警觉
-- **连杀奖励**：侦察无人机、集束空袭（手动标记目标）、哨戒机枪、武装直升机、白磷弹；每次从中选 3 项
-- **计分**：有击杀奖章（爆头、远距离、双杀、三杀、首杀）、助攻，以及经验值和等级系统
-
-### 武器与枪匠
-- **12 把武器**：
-  - 突击步枪：M4A1、AK-47、SCAR-H
-  - 冲锋枪：MP5、Vector
-  - 机枪：PKM
-  - 霰弹枪：M870
-  - 射手步枪：SKS
-  - 狙击步枪：L115A3
-  - 手枪：M1911、.357 左轮
-  - 火箭筒：RPG-7
-- **枪匠**：8 个配件栏位，每把枪最多装 5 个配件。配件对属性的正负影响会实时对比显示。枪械 3D 模型可以拖拽旋转和缩放，有 7 种迷彩（含黄金）
-- **配装**：5 套自定义配装，可以随时改名，也可以在对局中途更换（下次部署时生效）
-- **装备**：
-  - 致命装备：破片手雷（可烹饪）、粘性炸弹、燃烧瓶
-  - 战术装备：闪光弹、烟雾弹、兴奋剂
-
-### 画面
-- 基于物理的材质（PBR），带实时阴影，使用 ACES 色调映射，后处理包括泛光、调色和 FXAA 抗锯齿
-- 天气：沙尘、暴雪、降雨，以及动态天空
-- 特殊视觉效果：夜视仪、热成像瞄具，还有受伤、闪光致盲和白磷弹的屏幕效果
+当前版本完成了 **人物卡导入 → 内嵌战场 → 返回酒馆**。实时战况回传、LLM 指挥队友尚未实现。
 
 ## 操作
 
 | 按键 | 功能 |
-|---|---|
-| WASD | 移动 |
-| Shift | 冲刺 |
-| C / Ctrl | 蹲伏；冲刺中按下为滑铲 |
-| Z | 趴下 / 起身 |
-| 空格 | 起身 / 跳跃 |
+| --- | --- |
+| WASD / Shift | 移动 / 冲刺 |
 | 鼠标左键 / 右键 | 射击 / 切换并保持开镜 |
+| C 或 Ctrl | 蹲伏；冲刺时滑铲 |
+| Z / 空格 | 趴下或起身 / 起身或跳跃 |
 | R | 换弹 |
-| 1 / 2 / 滚轮 | 切换武器 |
+| 1、2 或滚轮 | 切换武器 |
 | V | 近战 |
-| G | 致命装备（按住可烹饪手雷） |
-| Q | 战术装备 |
-| F | 互动 / 拾取武器 |
-| 3 / 4 / 5 | 使用连杀奖励 |
-| Tab | 记分板 |
-| Esc | 暂停 |
+| G / Q | 致命装备 / 战术装备 |
+| F | 互动、拾取武器 |
+| 3、4、5 | 使用连杀奖励 |
+| Tab / Esc | 记分板 / 暂停与设置 |
 
-## 目录结构
+后坐力默认是原版的 **60%**，随机散布默认 **65%**，均可在设置中降至 0。帧数偏低时可降低画面质量。
 
-```
-index.html / style.css    页面与界面样式
-lib/                      Three.js r169（本地文件，不依赖 CDN）
-js/main.js                入口：渲染管线、主循环、输入处理
-js/menu.js                菜单：主菜单、大厅、配装、枪匠、设置
-js/mp.js                  多人模式、连杀奖励（哨戒机枪、直升机等）
-js/player.js / weapons.js 玩家控制器、武器系统、第一人称视图模型
-js/ai.js                  AI（寻路、感知、战术行为）
-js/world.js / maps.js     关卡构建工具和 4 张地图
-js/textures.js / materials.js  程序化纹理与材质
-js/gunmodel.js / soldier.js    枪械模型与士兵模型
-js/effects.js / combat.js / audio.js / hud.js  特效、弹道判定、合成音效、HUD
-```
+## 开发与打包
 
-## 本地改造版
-
-基于 https://github.com/zty828/OPUS5.5-COD ，保留原版渲染和四张多人地图，只提供团队死斗、占领、自由混战（AI 对战）。移除战役入口、流程和专属地图。
-
-当前版本支持单一鼠标灵敏度配置、快速切换开镜、跑动中开镜射击，以及 Z 键趴下。敌人体型与命中范围同步放大，移动速度已调整。
-
-设置中可分别调整后坐力和子弹随机散布（默认原版的 60% / 65%，可降至 0），设置自动保存。命中按实际伤害获得个人分数；近距离擦弹触发压制反馈与 +5 分，同一敌人每 2 秒最多一次，并短暂降低其射击精度。背景环境循环音和配音默认关闭，保留战斗音效。
-
-此仓库当前使用 Three.js 版本；旧体素版保留在 Git 历史中。DSH Tavern 人物卡集成仍是后续计划。
-
-本地启动：`python3 -m http.server 8089 --bind 127.0.0.1`。
-
-## DSH Tavern 人物卡
-
-`dsh/` 包含人物卡设定与随卡插件。通过 Tavern 公开的 `openOverlay` 接口运行内置游戏，不依赖 8089 服务，不自动请求模型；目前没有 LLM 队友控制。
-
-构建需要本机 DSH Tavern 源码与已安装的构建依赖（使用其卡包写入器与 esbuild）：
+普通玩家直接下载人物卡即可。以下步骤用于修改源码和重新构建。
 
 ```bash
-DSH_TAVERN_SOURCE=/path/to/dsh-tavern node scripts/build-dsh-card.mjs
+git clone https://github.com/flizzywine/dshcard-gunplay.git
+cd dshcard-gunplay
+python3 -m http.server 8089 --bind 127.0.0.1
 ```
 
-默认输出 `dist/现代战线-0.1.0.dshcard`。在酒馆人物卡库导入，启用随卡插件，刷新页面并用这张卡开局，点击「进入战场」。桌面键鼠操作；Esc 暂停，顶部「返回酒馆」关闭战场。关闭会结束当前比赛，设置与配装保存在本机浏览器。完整游戏资源随卡分发，不需要素材包或舞台开关。
+浏览器打开 `http://127.0.0.1:8089/` 可独立调试游戏。
+
+构建人物卡需要本机 [DSH Tavern 源码](https://github.com/flizzywine/dsh-tavern)及其已安装的构建依赖，使用 Tavern 自带的卡包写入器与 esbuild：
+
+```bash
+DSH_TAVERN_SOURCE=/path/to/dsh-tavern \
+  node scripts/build-dsh-card.mjs dist/dshcard-gunplay.dshcard
+```
+
+| 路径 | 内容 |
+| --- | --- |
+| `dsh/card.json` | 人物卡设定与开场说明 |
+| `dsh/plugin/` | 随卡插件与战场入口 |
+| `scripts/build-dsh-card.mjs` | 将游戏及插件打成 `.dshcard` |
+| `js/` | 游戏逻辑、地图、模型、音效与界面 |
+| `lib/` | 本地 Three.js 及扩展模块 |
+| `index.html`、`style.css` | 独立调试入口与样式 |
+
+卡包使用 Character Card V3，DSH 卡包格式版本为 1。游戏通过 Tavern 公开的 `openOverlay` 接口嵌入，无需配置素材舞台。项目统一采用 `dshcard-` 命名前缀。
+
+## 来源
+
+游戏基于 [zty828/OPUS5.5-COD](https://github.com/zty828/OPUS5.5-COD)，保留其 Three.js 渲染、程序化素材与四张对战地图，在此基础上调整操作、射击反馈并制作 DSH 人物卡。人物卡封装与后续改造由 flizzywine 维护。早期体素试验版保留在 Git 历史中。
