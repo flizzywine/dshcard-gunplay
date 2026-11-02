@@ -30,7 +30,7 @@ export class WeaponSystem {
     this.cur = 0;
     this.state = 'idle'; this.stateT = 0; this.stateDur = 0;
     this.adsT = 0; this.cool = 0; this.triggerHeld = false; this.cycleT = 0;
-    this.rp = 0; this.lastShot = 0; this.shotsInRow = 0;
+    this.rp = 0; this.ry = 0; this.shotAge = 1; this.shotsInRow = 0;
     this.vmKick = 0; this.vmRot = 0; this.bobPhase = 0;
     this.sway = new THREE.Vector2(); this.flashT = 0;
     this.pivot = new THREE.Group();
@@ -135,10 +135,37 @@ export class WeaponSystem {
   }
   fullAmmo() { for (const s of this.slots) { s.mag = s.stats.mag; s.reserve = s.stats.reserve; } }
 
+  resetRecoil() {
+    this.rp = this.ry = this.vmKick = this.vmRot = this.shotsInRow = 0;
+    this.shotAge = 1;
+  }
+  updateRecoil(dt) {
+    // Exponential recovery is independent of render rate and pauses with play.
+    // Keep input angles untouched: recovery must never restore an old mouse aim.
+    this.shotAge += dt;
+    this.rp = damp(this.rp, 0, 7, dt);
+    this.ry = damp(this.ry, 0, 10, dt);
+    this.vmKick = damp(this.vmKick, 0, 18, dt);
+    this.vmRot = damp(this.vmRot, 0, 14, dt);
+    if (this.shotAge > Math.max(0.18, 90 / this.w.stats.rpm)) this.shotsInRow = 0;
+  }
+  kickRecoil() {
+    const st = this.w.stats, pl = this.owner;
+    const adsMul = lerp(1, 0.75, this.adsT) * (pl.crouchT > 0.5 ? 0.85 : 1);
+    // Small bounded aim displacement, stronger independent weapon animation.
+    this.rp = Math.min(1.4 * DEG, this.rp + st.recoilV * 1.5 * DEG * adsMul);
+    this.ry = clamp(this.ry + Math.sin(this.shotsInRow * 2.4) * st.recoilH * 0.45 * DEG * adsMul, -0.22 * DEG, 0.22 * DEG);
+    this.vmKick = Math.min(0.08, this.vmKick + 0.03 + st.recoilV * 0.025);
+    this.vmRot = Math.min(0.16, this.vmRot + 0.05 + st.recoilV * 0.04);
+  }
+
   update(dt, input) {
     const game = this.game, pl = this.owner, w = this.w;
     if (!w) return;
     const st = w.stats;
+    this.updateRecoil(dt);
+    // Recovery must reach the camera before this frame's hitscan is sampled.
+    pl.syncCamera();
     this.stateT += dt;
     this.cool -= dt; this.cycleT -= dt;
     const sprinting = pl.sprinting;
@@ -183,10 +210,6 @@ export class WeaponSystem {
     }
     this.triggerHeld = input.fire;
     if (w.mag === 0 && this.state === 'idle' && w.reserve > 0 && this.cool < -0.15) this.startReload();
-    // 后坐力恢复
-    if (performance.now() - this.lastShot > 120) { this.rp = damp(this.rp, 0, 4, dt); this.shotsInRow = 0; }
-    this.vmKick = damp(this.vmKick, 0, 14, dt);
-    this.vmRot = damp(this.vmRot, 0, 10, dt);
     this.flashT -= dt;
     w.flash.visible = this.flashT > 0;
     if (w.flash.visible) w.flash.material.rotation = Math.random() * 6;
@@ -220,7 +243,7 @@ export class WeaponSystem {
     w.mag--;
     this.cool = 60 / st.rpm;
     if (st.fire === 'bolt' || st.fire === 'pump') { this.cycleT = 60 / st.rpm; }
-    this.lastShot = performance.now();
+    this.shotAge = 0;
     this.shotsInRow++;
     pl.stats.shots++;
     const cam = game.camera;
@@ -256,15 +279,7 @@ export class WeaponSystem {
     game.makeNoise(pl.pos, st.suppressed ? 12 : 70, pl.team);
     if (!st.suppressed) pl.revealT = 1.5;
     // 后坐力
-    const adsMul = lerp(1, 0.75, this.adsT) * (pl.crouchT > 0.5 ? 0.85 : 1);
-    const kick = st.recoilV * 0.55 * DEG * adsMul;
-    const side = (Math.random() - 0.4) * st.recoilH * 0.5 * DEG * adsMul;
-    pl.pitch += kick * 0.55;
-    this.rp += kick * 0.45;
-    pl.yaw -= side;
-    this.vmKick += 0.02 + st.recoilV * 0.012;
-    this.vmRot += 0.02 + st.recoilV * 0.02;
-    pl.punch(st.recoilV * 0.004);
+    this.kickRecoil();
   }
   muzzleWorld(out) {
     const w = this.w;
@@ -380,7 +395,9 @@ export class WeaponSystem {
       // Pivot gun animation around the sight axis. The dot must stay on the
       // camera's shot ray instead of drifting away with decorative weapon sway.
       const sight = w.info.sight.clone().applyEuler(this.holder.rotation);
-      const aligned = new THREE.Vector3(0, 0, -w.info.eyeRelief).sub(sight);
+      // Recoil changes eye relief along the shot axis without moving the dot
+      // off target. Do not cancel the rearward kick when aligning the optic.
+      const aligned = new THREE.Vector3(0, 0, -w.info.eyeRelief + this.vmKick * 0.5).sub(sight);
       this.holder.position.lerp(aligned, ae);
     }
     // 瞄具遮罩：高倍镜隐藏模型

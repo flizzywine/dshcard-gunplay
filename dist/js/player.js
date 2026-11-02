@@ -42,6 +42,7 @@ export class Player {
   }
   respawn(pos, yaw) {
     this.resetAim();
+    this.ws.resetRecoil();
     this.pos.copy(pos); this.vel.set(0, 0, 0); this.yaw = yaw; this.pitch = 0;
     this.hp = this.maxHp; this.alive = true; this.dmgT = 99;
     this.protectedUntil = this.game.time + 1.5; this.crouchT = 0; this.crouching = false; this.sliding = false;
@@ -244,7 +245,7 @@ export class Player {
     const bob = this.onGround ? Math.sin(ws.bobPhase * 2) * 0.02 * Math.min(1, spd / 6) * (1 - ws.adsT) : 0;
     cam.position.set(this.pos.x, this.eyeSmooth - this.landDip + bob, this.pos.z);
     cam.rotation.order = 'YXZ';
-    cam.rotation.y = this.yaw + (this.cameraShakeX || 0);
+    cam.rotation.y = this.yaw + ws.ry + (this.cameraShakeX || 0);
     cam.rotation.x = this.pitch + ws.rp + this.punchV + (this.cameraShakeY || 0);
     cam.rotation.z = this.sliding ? -0.06 : (ws.sprintT * Math.sin(ws.bobPhase) * 0.01);
     const zoom = lerp(1, ws.w ? ws.w.stats.zoom : 1, ws.adsT * ws.adsT);

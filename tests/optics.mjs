@@ -22,7 +22,8 @@ assert.equal(ws.slots[0].stats.zoom, 1.2, 'visual optics preserve rifle balance'
 for (const index of [0, 1, 3]) {
   ws.switchTo(index); ws.state = 'idle'; ws.adsT = 1;
   // Idle and a rapid mouse movement must both keep the reticle on the shot axis.
-  for (const movement of [0, 180]) {
+  for (const movement of [0, 180, -180]) {
+    if (movement === -180) { ws.shotsInRow++; ws.kickRecoil(); }
     p.updateCamera(0);
     ws.updateViewmodel(1 / 60, { mdx: movement, mdy: -movement });
     p.syncCamera(); game.vmScene.updateMatrixWorld(true); game.vmCamera.updateMatrixWorld(true);
@@ -30,6 +31,10 @@ for (const index of [0, 1, 3]) {
     assert(optic.reticle && ws.holder.visible);
     const position = optic.reticle.getWorldPosition(new THREE.Vector3());
     const projected = position.clone().project(game.vmCamera);
+    if (movement === -180) {
+      const local = position.clone().applyMatrix4(game.vmCamera.matrixWorldInverse);
+      assert(local.z > -optic.eyeRelief + .001, 'ADS must preserve visible rearward recoil');
+    }
     assert(Math.abs(projected.x) < 1e-6 && Math.abs(projected.y) < 1e-6, 'reticle must project to center even with gun sway');
     assert(projected.z > -1 && projected.z < 1, 'reticle cannot be clipped behind the near plane');
     const opaque = [];
