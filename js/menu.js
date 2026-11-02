@@ -5,7 +5,7 @@ import { WEAPONS, PRIMARY_ORDER, SECONDARY_ORDER, SLOT_NAMES, ATTACHMENTS, CAMOS
 import { buildGun } from './gunmodel.js';
 import { createSoldierModel, animateSoldier } from './soldier.js';
 import { mat, camoSwatch } from './materials.js';
-import { damp, fmtTime } from './util.js';
+import { damp } from './util.js';
 
 const DIFF_NAMES = ['新兵', '正规军', '老兵'];
 const MAX_ATT = 5;
@@ -49,7 +49,6 @@ export class Menu {
     this.camLook = this.camTarget.look.clone();
     this.gunRotY = -Math.PI / 2; this.gunRotX = 0; this.gunSpin = true;
     this.lobby = { mode: 'tdm', map: 'dune', diff: 1, allies: 5, enemies: 6, time: 10 };
-    this.campDiff = 1;
     this.selClass = game.profile.selClass || 0;
     this.buildScene();
     this.el.addEventListener('pointerdown', () => game.audio.init());
@@ -215,12 +214,10 @@ export class Menu {
   showMain() {
     this.setCam('main');
     this.setSoldier(this.game.profile.classes[this.game.profile.selClass || 0]);
-    const best = this.game.profile.campaignBest;
     const r = this.render(`
       <div class="menu-left">
         <div class="menu-title">现代战线</div>
         <div class="menu-sub">MODERN FRONTLINE</div>
-        <div class="mbtn" data-a="campaign"><div class="ico">◈</div><div><div class="mt">战役</div><div class="md">行动代号：午夜清道夫 ${best ? '· 最佳 ' + fmtTime(best) : ''}</div></div></div>
         <div class="mbtn" data-a="mp"><div class="ico">⚔</div><div><div class="mt">多人对战</div><div class="md">团队死斗 · 占领 · 自由混战（对战AI）</div></div></div>
         <div class="mbtn" data-a="loadout"><div class="ico">⚙</div><div><div class="mt">武器装备</div><div class="md">自定义配装 · 枪匠 · 技能 · 连杀奖励</div></div></div>
         <div class="mbtn" data-a="settings"><div class="ico">☰</div><div><div class="mt">设置</div><div class="md">画面 · 操作 · 音频</div></div></div>
@@ -228,36 +225,15 @@ export class Menu {
       ${this.playerCard()}
       <div style="position:absolute;right:40px;bottom:30px;text-align:right;font-size:12px;color:#777;line-height:1.9">
         <div><span class="kbd">WASD</span>移动 <span class="kbd">Shift</span>冲刺 <span class="kbd">C</span>蹲/滑铲 <span class="kbd">空格</span>跳跃 <span class="kbd">R</span>换弹 <span class="kbd">V</span>近战</div>
-        <div><span class="kbd">G</span>致命装备 <span class="kbd">Q</span>战术装备 <span class="kbd">F</span>互动 <span class="kbd">N</span>夜视仪 <span class="kbd">3/4/5</span>连杀奖励 <span class="kbd">Tab</span>记分板</div>
+        <div><span class="kbd">G</span>致命装备 <span class="kbd">Q</span>战术装备 <span class="kbd">F</span>互动 <span class="kbd">3/4/5</span>连杀奖励 <span class="kbd">Tab</span>记分板</div>
         <div style="color:#555;margin-top:6px">现代战线 v1.0 · 程序化实时渲染 · 本作为原创致敬作品</div>
       </div>`, 'dim', 'main');
     this.on(r, '[data-a]', el => {
       const a = el.dataset.a;
-      if (a === 'campaign') this.showCampaign();
-      else if (a === 'mp') this.showLobby();
+      if (a === 'mp') this.showLobby();
       else if (a === 'loadout') this.showLoadouts('main');
       else if (a === 'settings') this.showSettings('main');
     });
-  }
-
-  // ---------------- 战役简报 ----------------
-  showCampaign() {
-    this.setCam('lobby');
-    const best = this.game.profile.campaignBest;
-    const diffDesc = ['敌人反应迟缓，你能承受更多伤害。适合初次体验。', '标准的战斗体验，需要合理利用掩体。', '敌人致命而精准，每一次暴露都可能是最后一次。'];
-    const r = this.render(`
-      <div class="brief">
-        <div class="op">行动代号</div>
-        <h1>午夜清道夫</h1>
-        <p>卡尔达什边境，当地时间凌晨 02:40。情报确认，军火走私网络头目 <b style="color:#fff">「铁蝎」萨米尔</b> 今夜藏身于边境村落深处的一座武装大院中。他掌握着一批失踪的便携式防空导弹的下落。</p>
-        <p>你将与 <b style="color:#fff">布雷克上尉</b> 和狙击手 <b style="color:#fff">渡鸦</b> 一同夜间渗透：拔除外围前哨，穿越村庄，突入大院，击毙目标并夺取情报，随后在敌人的反扑中坚守直至撤离。</p>
-        <div class="meta"><div>地点<b>卡尔达什边境</b></div><div>时间<b>02:40 夜间</b></div><div>小队<b>3 人</b></div><div>最佳用时<b>${best ? fmtTime(best) : '—'}</b></div></div>
-        <div class="diffs">${DIFF_NAMES.map((n, i) => `<div class="diff ${i === this.campDiff ? 'sel' : ''}" data-d="${i}"><b>${n}</b><span>${diffDesc[i]}</span></div>`).join('')}</div>
-        <div style="display:flex;gap:12px"><button class="btn" data-a="go">开始任务</button><button class="btn ghost" data-a="back">返回</button></div>
-      </div>`, 'dim', 'campaign');
-    this.on(r, '.diff', el => { this.campDiff = +el.dataset.d; r.querySelectorAll('.diff').forEach(d => d.classList.toggle('sel', d === el)); });
-    this.on(r, '[data-a=go]', () => this.game.startGame('campaign', { diff: this.campDiff }));
-    this.on(r, '[data-a=back]', () => this.showMain());
   }
 
   // ---------------- 多人大厅 ----------------
@@ -515,7 +491,7 @@ export class Menu {
           <div><b>空格</b>跳跃</div><div><b>R</b>换弹</div>
           <div><b>1 / 2 / 滚轮</b>切换武器</div><div><b>V / 鼠标侧键</b>近战</div>
           <div><b>G</b>致命装备（按住烹饪）</div><div><b>Q</b>战术装备</div>
-          <div><b>F</b>互动 / 拾取武器</div><div><b>N</b>夜视仪（战役）</div>
+          <div><b>F</b>互动 / 拾取武器</div>
           <div><b>3 / 4 / 5</b>连杀奖励</div><div><b>Tab</b>记分板</div>
         </div>
         <div style="margin-top:24px;display:flex;gap:12px"><button class="btn" data-a="back">返回</button><button class="btn ghost small" data-a="resetp">重置存档</button></div>
@@ -550,21 +526,19 @@ export class Menu {
   showPause() {
     this.pauseAt = performance.now();
     const g = this.game;
-    const camp = g.mode && g.mode.constructor.name === 'Campaign';
     const r = this.render(`
       <div class="pause">
-        <div class="hdr" style="margin-bottom:30px">已暂停<small>${camp ? '战役 · 午夜清道夫' : '多人对战'}</small></div>
+        <div class="hdr" style="margin-bottom:30px">已暂停<small>多人对战</small></div>
         <div class="mbtn" data-a="resume"><div class="ico">▶</div><div class="mt">继续游戏</div></div>
-        ${camp ? '<div class="mbtn" data-a="cp"><div class="ico">↺</div><div class="mt">读取检查点</div></div>' : '<div class="mbtn" data-a="class"><div class="ico">⚙</div><div class="mt">更换配装</div></div>'}
-        <div class="mbtn" data-a="restart"><div class="ico">⟲</div><div class="mt">${camp ? '重新开始任务' : '重新开始对局'}</div></div>
+        <div class="mbtn" data-a="class"><div class="ico">⚙</div><div class="mt">更换配装</div></div>
+        <div class="mbtn" data-a="restart"><div class="ico">⟲</div><div class="mt">重新开始对局</div></div>
         <div class="mbtn" data-a="settings"><div class="ico">☰</div><div class="mt">设置</div></div>
         <div class="mbtn" data-a="quit"><div class="ico">✕</div><div class="mt">退出到主菜单</div></div>
         <div style="margin-top:20px;font-size:12px;color:#777">按 Esc 继续</div>
       </div>`, 'solid', 'pause');
     this.on(r, '[data-a=resume]', () => this.resume());
-    this.on(r, '[data-a=cp]', () => { g.paused = false; this.hide(); if (g.player.alive) { g.player.alive = false; g.dead = true; } g.mode.respawn(); });
     this.on(r, '[data-a=class]', () => this.showClassSelect(true));
-    this.on(r, '[data-a=restart]', () => { const cfg = g.mode.cfg; const kind = camp ? 'campaign' : 'mp'; g.paused = false; g.startGame(kind, cfg); });
+    this.on(r, '[data-a=restart]', () => { const cfg = g.mode.cfg; g.paused = false; g.startGame('mp', cfg); });
     this.on(r, '[data-a=settings]', () => this.showSettings('pause'));
     this.on(r, '[data-a=quit]', () => g.exitToMenu());
   }

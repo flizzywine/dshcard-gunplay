@@ -16,7 +16,6 @@ import { Audio } from './audio.js';
 import { HUD } from './hud.js';
 import { Menu } from './menu.js';
 import { MPMatch } from './mp.js';
-import { Campaign } from './campaign.js';
 import { buildGun } from './gunmodel.js';
 import { DEFAULT_CLASSES, DEFAULT_STREAKS } from './data.js';
 import { damp } from './util.js';
@@ -60,7 +59,7 @@ class Game {
       Object.assign(this.settings, { sens: 5.5, adsSens: .9, aimMode: 'toggle', voice: false, gunplayV1: true });
       this.saveSettings();
     }
-    this.profile = Object.assign({ xp: 0, classes: JSON.parse(JSON.stringify(DEFAULT_CLASSES)), streaks: [...DEFAULT_STREAKS], selClass: 0, campaignBest: null }, JSON.parse(localStorage.getItem('mf_profile') || '{}'));
+    this.profile = Object.assign({ xp: 0, classes: JSON.parse(JSON.stringify(DEFAULT_CLASSES)), streaks: [...DEFAULT_STREAKS], selClass: 0 }, JSON.parse(localStorage.getItem('mf_profile') || '{}'));
     if (!this.profile.classes || this.profile.classes.length < 5) this.profile.classes = JSON.parse(JSON.stringify(DEFAULT_CLASSES));
     this.state = 'loading';
     this.paused = false;
@@ -214,7 +213,7 @@ class Game {
       fire: !!(I.buttons & 1), ads: !!(I.buttons & 4),
       reloadPressed: P.KeyR, swapPressed: I.wheel !== 0, slot1: P.Digit1, slot2: P.Digit2,
       meleePressed: P.KeyV || P.Mouse3, lethalPressed: P.KeyG, lethal: K.KeyG, tacticalPressed: P.KeyQ, tactical: K.KeyQ,
-      interact: K.KeyF, interactPressed: P.KeyF, nvgPressed: P.KeyN,
+      interact: K.KeyF, interactPressed: P.KeyF,
       streak: P.Digit3 ? 0 : P.Digit4 ? 1 : P.Digit5 ? 2 : -1,
       firePressed: P.Mouse0, adsPressed: P.Mouse2,
       mdx: I.mdx, mdy: I.mdy,
@@ -257,19 +256,15 @@ class Game {
     return w;
   }
   async startGame(kind, cfg) {
+    if (kind !== 'mp' || !MAPS[cfg?.map] || !['tdm', 'dom', 'ffa'].includes(cfg?.mode)) throw new Error('仅支持多人对战及现有地图');
     this.menu.showLoadingOverlay('正在部署…');
     await new Promise(r => setTimeout(r, 30));
     this.audio.init();
     this.clearWorld();
     this.renderPass.scene = this.scene; this.renderPass.camera = this.camera;
     this.vmPass.enabled = true;
-    if (kind === 'mp') {
-      this.loadMap(cfg.map);
-      this.mode = new MPMatch(this, cfg);
-    } else {
-      this.loadMap('kaldash');
-      this.mode = new Campaign(this, cfg);
-    }
+    this.loadMap(cfg.map);
+    this.mode = new MPMatch(this, cfg);
     this.mode.start();
     this.state = 'play'; this.paused = false; this.dead = false; this.ending = false;
     this.time = 0;
@@ -361,14 +356,7 @@ class Game {
         if (k && k.pos) { const tgt = k.pos.clone(); tgt.y += 1.2; const m = new THREE.Matrix4().lookAt(cam.position, tgt, new THREE.Vector3(0, 1, 0)); const q = new THREE.Quaternion().setFromRotationMatrix(m); cam.quaternion.slerp(q, 1 - Math.exp(-2 * dt)); }
         this.audio.setListener(cam.position, pl.yaw);
       }
-      // NVG
-      if (inp.nvgPressed && this.mode && this.mode.nvgAvailable) {
-        this.nvg = !this.nvg;
-        this.audio.tone(this.nvg ? 2400 : 1600, 0.15, 0.1, 'sine', null, this.nvg ? 1.5 : 0.6);
-      }
-      this.grade.uniforms.nvg.value = this.nvg && pl.alive && !this.scopeState ? 1 : 0;
-      document.getElementById('nvgFrame').classList.toggle('hidden', !(this.nvg && pl.alive && !this.scopeState));
-      this.renderer.toneMappingExposure = (this.world.env.exposure ?? 1) * (this.nvg ? 1.0 : 1);
+      this.renderer.toneMappingExposure = this.world.env.exposure ?? 1;
       this.setThermal(this.scopeState === 'thermal');
       this.grade.uniforms.hurt.value = pl.alive ? Math.max(0, 1 - pl.hp / pl.maxHp - 0.2) : 0.8;
     }
