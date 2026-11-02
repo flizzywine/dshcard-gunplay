@@ -4,6 +4,12 @@ import { WeaponSystem } from './weapons.js';
 import { clamp, damp, lerp, raySphere, rayAABB, DEG } from './util.js';
 import { WEAPONS, LETHALS, TACTICALS } from './data.js';
 
+export function aimSensitivity(settings, zoom, adsT) {
+  // Low-power sights keep direct tracking; high magnification retains precision.
+  const scoped = settings.adsSens / Math.pow(Math.max(1, zoom / 1.5), .85);
+  return settings.sens * .00275 * lerp(1, scoped, adsT);
+}
+
 export class Player {
   constructor(game, opts) {
     this.game = game;
@@ -107,8 +113,7 @@ export class Player {
     input = { ...input, ads: this.resolveAim(input) };
     // 视角
     const ws = this.ws;
-    const zoom = lerp(1, ws.w ? ws.w.stats.zoom : 1, ws.adsT);
-    const sens = game.settings.sens * 0.0022 * (ws.adsT > 0.5 ? game.settings.adsSens / Math.pow(zoom, 0.85) : 1);
+    const sens = aimSensitivity(game.settings, ws.w ? ws.w.stats.zoom : 1, ws.adsT);
     this.yaw += ws.consumeRecoil('ry', -input.mdx * sens);
     this.pitch += ws.consumeRecoil('rp', -input.mdy * sens * (game.settings.invertY ? -1 : 1));
     this.pitch = clamp(this.pitch, -1.5, 1.5);
