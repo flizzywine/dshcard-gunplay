@@ -54,9 +54,12 @@ const GradeShader = {
 
 class Game {
   constructor() {
-    this.settings = Object.assign({ sens: 5.5, aimMode: 'toggle', adsSens: 0.9, fov: 78, quality: 'high', volume: 0.8, voice: false, invertY: false, showFps: true }, JSON.parse(localStorage.getItem('mf_settings') || '{}'));
-    if (!this.settings.gunplayV1) {
-      Object.assign(this.settings, { sens: 5.5, adsSens: .9, aimMode: 'toggle', voice: false, gunplayV1: true });
+    this.settings = Object.assign({ sens: 1.0, adsSens: .9, fov: 78, quality: 'high', volume: .8, voice: false, invertY: false, showFps: true }, JSON.parse(localStorage.getItem('mf_settings') || '{}'));
+    // One-time restoration also replaces the previously saved high sensitivity.
+    if (!this.settings.originalControlsV1) {
+      Object.assign(this.settings, { sens: 1, adsSens: .9, fov: 78, invertY: false, voice: false, originalControlsV1: true });
+      delete this.settings.aimMode;
+      delete this.settings.gunplayV1;
       this.saveSettings();
     }
     this.profile = Object.assign({ xp: 0, classes: JSON.parse(JSON.stringify(DEFAULT_CLASSES)), streaks: [...DEFAULT_STREAKS], selClass: 0 }, JSON.parse(localStorage.getItem('mf_profile') || '{}'));
@@ -162,15 +165,28 @@ class Game {
       }
     });
     window.addEventListener('keyup', e => { I.keys[e.code] = false; if (e.code === 'Tab' && this.state === 'play') this.hud.showScoreboard(false); });
+    // 鼠标位移过滤：浏览器（尤其 Windows 版 Chrome/Edge）在指针锁定下偶尔会给出
+    // 巨大的错误 movementX/Y（光标被拉回中心时的跳变、锁定刚生效时的第一帧等），
+    // 表现为视角"闪现"。这里丢弃锁定后最初的事件，并剔除相对近期平均值异常巨大的单次跳变。
+    const MF = this.mouseFilter = { since: 0, avg: 0, strikes: 0, lastT: 0 };
     window.addEventListener('mousemove', e => {
       if (document.pointerLockElement !== cv) return;
-      I.mdx += e.movementX || 0; I.mdy += e.movementY || 0;
+      const now = performance.now();
+      if (now - MF.since < 120) return;                       // 锁定刚生效：丢弃
+      const dx = e.movementX || 0, dy = e.movementY || 0;
+      const mag = Math.hypot(dx, dy);
+      if (now - MF.lastT > 250) MF.avg = Math.min(MF.avg, 30); // 静止一段后重新起算
+      MF.lastT = now;
+      const limit = Math.max(160, MF.avg * 7);
+      if (mag > limit) {
+        // 连续多次大位移说明是真实的快速甩枪，放行；孤立的跳变视为噪声丢弃
+        if (++MF.strikes < 3) return;
+      } else MF.strikes = 0;
+      MF.avg = MF.avg * 0.8 + Math.min(mag, limit) * 0.2;
+      I.mdx += dx; I.mdy += dy;
     });
     window.addEventListener('mousedown', e => {
-      if (this.state === 'play' && !this.paused && document.pointerLockElement !== cv && !this.menu.overlayOpen && (e.target === cv || document.getElementById('clickToPlay').contains(e.target))) {
-        if (e.button === 2) { this.pendingAim = true; I.buttons |= 4; }
-        this.lock(); return;
-      }
+      if (this.state === 'play' && !this.paused && document.pointerLockElement !== cv && !this.menu.overlayOpen && e.target === cv) { this.lock(); return; }
       if (document.pointerLockElement === cv) { I.buttons |= (1 << e.button); I.pressed['Mouse' + e.button] = true; }
     });
     window.addEventListener('mouseup', e => { I.buttons &= ~(1 << e.button); });
@@ -178,14 +194,11 @@ class Game {
     window.addEventListener('contextmenu', e => e.preventDefault());
     document.addEventListener('pointerlockchange', () => {
       const locked = document.pointerLockElement === cv;
-      I.mdx = 0; I.mdy = 0;
-      if (locked && this.pendingAim) { I.pressed.Mouse2 = true; }
-      this.pendingAim = false;
+      MF.since = performance.now(); MF.avg = 0; MF.strikes = 0; I.mdx = 0; I.mdy = 0;
       document.getElementById('clickToPlay').classList.add('hidden');
       if (!locked && this.state === 'play' && !this.paused && !this.dead && !this.menu.overlayOpen && !this.ending) this.pause(true);
-      if (!locked) { I.buttons = 0; I.pressed = {}; this.player?.resetAim(); }
+      if (!locked) { I.buttons = 0; }
     });
-    document.addEventListener('pointerlockerror', () => { this.pendingAim = false; });
     document.getElementById('clickToPlay').addEventListener('click', () => this.lock());
     document.getElementById('btnChangeClass').addEventListener('click', () => this.menu.showClassSelect());
   }
@@ -205,7 +218,6 @@ class Game {
   pause(v) {
     if (this.state !== 'play') return;
     this.paused = v;
-    if (v) { this.pendingAim = false; this.player?.resetAim(); }
     if (v) { this.menu.showPause(); if (document.pointerLockElement) document.exitPointerLock(); }
     else { this.menu.hide(); this.lock(); }
   }
@@ -215,7 +227,7 @@ class Game {
     const I = this.input, K = I.keys, P = I.pressed;
     const s = {
       fwd: K.KeyW, back: K.KeyS, left: K.KeyA, right: K.KeyD,
-      sprint: K.ShiftLeft || K.ShiftRight, sprintPressed: P.ShiftLeft || P.ShiftRight, jumpPressed: P.Space, crouchPressed: P.KeyC || P.ControlLeft,
+      sprint: K.ShiftLeft || K.ShiftRight, jumpPressed: P.Space, crouchPressed: P.KeyC || P.ControlLeft,
       fire: !!(I.buttons & 1), ads: !!(I.buttons & 4),
       reloadPressed: P.KeyR, swapPressed: I.wheel !== 0, slot1: P.Digit1, slot2: P.Digit2,
       meleePressed: P.KeyV || P.Mouse3, lethalPressed: P.KeyG, lethal: K.KeyG, tacticalPressed: P.KeyQ, tactical: K.KeyQ,

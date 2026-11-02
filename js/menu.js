@@ -477,8 +477,7 @@ export class Menu {
         <div class="hdr" style="margin-bottom:20px">设置<small>画面 · 操作 · 音频</small></div>
         <div class="set-row"><span>画面质量</span><div class="seg" data-q="1">${['low', 'medium', 'high'].map((q, i) => `<div data-v="${q}" class="${S.quality === q ? 'sel' : ''}">${['低', '中', '高'][i]}</div>`).join('')}</div></div>
         ${rng('fov', '视野 (FOV)', 65, 100, 1, fmts.fov)}
-        ${rng('sens', '鼠标灵敏度', 0.2, 10, 0.05, fmts.sens)}
-        <div class="set-row"><span>右键开镜</span><div class="seg" data-aim="1">${['toggle', 'hold'].map((v, i) => `<div data-v="${v}" class="${S.aimMode === v ? 'sel' : ''}">${['点击切换', '按住开镜'][i]}</div>`).join('')}</div></div>
+        ${rng('sens', '鼠标灵敏度', 0.2, 3, 0.05, fmts.sens)}
         ${rng('adsSens', '开镜灵敏度倍率', 0.3, 1.5, 0.05, fmts.adsSens)}
         ${rng('volume', '主音量', 0, 1, 0.01, fmts.volume)}
         ${tog('invertY', '反转 Y 轴')}
@@ -509,11 +508,6 @@ export class Menu {
       if (k === 'showFps') { const f = document.getElementById('fps'); if (f) f.classList.toggle('hidden', !S[k]); }
       this.game.saveSettings();
     })));
-    r.querySelectorAll('.seg[data-aim] div').forEach(d => d.addEventListener('click', () => {
-      S.aimMode = d.dataset.v; this.game.player?.resetAim();
-      r.querySelectorAll('.seg[data-aim] div').forEach(x => x.classList.toggle('sel', x === d));
-      this.game.saveSettings();
-    }));
     r.querySelectorAll('.seg[data-q] div').forEach(d => d.addEventListener('click', () => {
       S.quality = d.dataset.v; r.querySelectorAll('.seg[data-q] div').forEach(x => x.classList.toggle('sel', x === d));
       this.game.saveSettings(); this.game.applyQuality();
