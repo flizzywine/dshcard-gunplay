@@ -26,6 +26,7 @@ export class Player {
     this.lastAttacker = null;
     this.interactHold = 0;
     this.radius = 0.35;
+    this.aimLatched = false;
   }
   hasPerk(id) { return this.perks.has(id); }
   equip(loadout) {
@@ -40,6 +41,7 @@ export class Player {
     this.loadout = loadout;
   }
   respawn(pos, yaw) {
+    this.resetAim();
     this.pos.copy(pos); this.vel.set(0, 0, 0); this.yaw = yaw; this.pitch = 0;
     this.hp = this.maxHp; this.alive = true; this.dmgT = 99; this.crouchT = 0; this.crouching = false; this.sliding = false;
     this.eyeSmooth = pos.y + 1.62; this.stats.streak = 0;
@@ -72,7 +74,7 @@ export class Player {
     if (!info.burn || Math.random() < 0.1) this.game.audio.hurt();
     this.punch(0.02);
     if (this.hp <= 0) {
-      this.hp = 0; this.alive = false; this.stats.deaths++;
+      this.hp = 0; this.alive = false; this.resetAim(); this.stats.deaths++;
       this.game.onKill(info.attacker, this, info.weapon, info.head);
       return true;
     }
@@ -82,9 +84,19 @@ export class Player {
   punch(a) { this.punchV += a; }
   cancelSprint() { this.sprinting = false; this.sprintLock = 0.25; }
 
+  resetAim() { this.aimLatched = false; }
+  resolveAim(input) {
+    if (input.adsPressed) {
+      this.aimLatched = !this.aimLatched;
+      if (this.aimLatched) this.cancelSprint();
+    } else if (input.sprintPressed && input.fwd) this.resetAim();
+    return this.aimLatched;
+  }
+
   update(dt, input) {
     const game = this.game, world = game.world;
     if (!this.alive) return;
+    input = { ...input, ads: this.resolveAim(input) };
     // 视角
     const ws = this.ws;
     const zoom = lerp(1, ws.w ? ws.w.stats.zoom : 1, ws.adsT);
@@ -109,7 +121,7 @@ export class Player {
     const fx = (input.right ? 1 : 0) - (input.left ? 1 : 0);
     const fz = (input.fwd ? 1 : 0) - (input.back ? 1 : 0);
     this.sprintLock = (this.sprintLock || 0) - dt;
-    const wantSprint = input.sprint && fz > 0 && this.sprintLock <= 0 && ws.adsT < 0.3 && !this.sliding;
+    const wantSprint = !input.ads && input.sprint && fz > 0 && this.sprintLock <= 0 && ws.adsT < 0.3 && !this.sliding;
     if (wantSprint && !this.sprinting) { this.sprinting = true; this.crouching = false; if (ws.state === 'reload' && !this.hasPerk('sleight')) ws.state = 'idle'; }
     if (!wantSprint) this.sprinting = false;
     // 头顶空间检查（蹲伏时不能站起）

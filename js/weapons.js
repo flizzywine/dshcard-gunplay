@@ -31,6 +31,7 @@ export class WeaponSystem {
 
   makeSlot(cfg) {
     const stats = computeStats(cfg.id, cfg.att || {});
+    if (this.owner.isPlayer) stats.ads = Math.max(.07, stats.ads * .5);
     const info = buildGun(cfg.id, cfg.att || {}, cfg.camo || 'none', { noShadow: true });
     const sleeve = mat(this.game.playerSleeve || 'fab_ally');
     const arms = buildArms(info, sleeve);
