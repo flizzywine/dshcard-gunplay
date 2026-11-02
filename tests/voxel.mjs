@@ -84,6 +84,11 @@ assert(game.player.ws.pivot.quaternion.angleTo(game.camera.quaternion) < 1e-7, '
 const rays = [], raycast = world.raycast;
 world.raycast = function(origin, direction, ...args) { rays.push(direction.clone()); return raycast.call(this, origin, direction, ...args); };
 game.player.ws.state = 'idle'; game.player.ws.cool = game.player.ws.cycleT = -1;
+// Inspect the actual damaging ray rather than an aim-assist probe. Disable
+// random spread only for this input-timing assertion.
+const shotStats = game.player.ws.w.stats;
+const originalSpread = { hip: shotStats.hip, adsSpread: shotStats.adsSpread };
+shotStats.hip = shotStats.adsSpread = 0;
 const expectedShotYaw = game.player.yaw + 50 * game.settings.sens * .0022;
 game.player.update(1 / 60, { mdx: -50, mdy: 0, fire: true });
 assert(rays.length > 0);
@@ -91,6 +96,7 @@ const shotYaw = Math.atan2(-rays[0].x, -rays[0].z);
 assert(Math.abs(shotYaw - expectedShotYaw - (game.player.cameraShakeX || 0)) < 1e-7, 'turn-and-fire must trace this frame\'s aim, before recoil');
 assert(game.camera.quaternion.angleTo(game.vmCamera.quaternion) < 1e-7, 'gun and world camera remain synchronized after recoil');
 world.raycast = raycast;
+Object.assign(shotStats, originalSpread);
 // Toggle ADS must persist after RMB release and through LMB fire, while hold ADS
 // remains available. Exercise actual weapon ADS transitions, not just a latch.
 const aimStep = input => game.player.update(.1, { mdx: 0, mdy: 0, ...input });

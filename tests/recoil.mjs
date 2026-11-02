@@ -12,7 +12,7 @@ function make(id = 'm4') {
 function shot(ws) { ws.shotAge = 0; ws.shotsInRow++; ws.kickRecoil(); }
 const ws = make();
 for (let i = 0; i < 500; i++) shot(ws);
-assert(ws.rp > 0 && ws.rp <= 1.4 * DEG, 'sustained fire must have a bounded upward displacement');
+assert(ws.rp > 0 && ws.rp <= 2 * DEG, 'sustained fire must have a bounded upward displacement');
 assert(Math.abs(ws.ry) <= 0.22 * DEG, 'horizontal displacement stays controllable');
 assert(ws.vmKick <= 0.08 && ws.vmRot <= 0.16, 'gun cannot accumulate unbounded movement');
 assert.deepEqual(ws.owner, { pitch: .2, yaw: -.3, crouchT: 0 }, 'fire preserves mouse aim');

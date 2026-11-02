@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { computeStats, WEAPONS } from './data.js';
 import { buildGun, buildArms } from './gunmodel.js';
 import { mat } from './materials.js';
-import { fireHitscan, assistedDirection, Projectile } from './combat.js';
+import { fireHitscan, Projectile } from './combat.js';
 import { clamp, damp, lerp, rand, spreadDir, DEG } from './util.js';
 
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion();
@@ -142,8 +142,12 @@ export class WeaponSystem {
   updateRecoil(dt) {
     // Exponential recovery is independent of render rate and pauses with play.
     // Keep input angles untouched: recovery must never restore an old mouse aim.
+    const hold = Math.max(0.14, 90 / this.w.stats.rpm);
+    const heldTime = Math.min(dt, Math.max(0, hold - this.shotAge));
     this.shotAge += dt;
-    this.rp = damp(this.rp, 0, 7, dt);
+    // Retain climb between automatic shots; recover quickly after the burst.
+    // Split at the deadline so a frame crossing it has the same decay integral.
+    this.rp *= Math.exp(-0.65 * heldTime - 10 * (dt - heldTime));
     this.ry = damp(this.ry, 0, 10, dt);
     this.vmKick = damp(this.vmKick, 0, 18, dt);
     this.vmRot = damp(this.vmRot, 0, 14, dt);
@@ -153,7 +157,7 @@ export class WeaponSystem {
     const st = this.w.stats, pl = this.owner;
     const adsMul = lerp(1, 0.75, this.adsT) * (pl.crouchT > 0.5 ? 0.85 : 1);
     // Small bounded aim displacement, stronger independent weapon animation.
-    this.rp = Math.min(1.4 * DEG, this.rp + st.recoilV * 1.5 * DEG * adsMul);
+    this.rp = Math.min(2 * DEG, this.rp + st.recoilV * 1.8 * DEG * adsMul);
     this.ry = clamp(this.ry + Math.sin(this.shotsInRow * 2.4) * st.recoilH * 0.45 * DEG * adsMul, -0.22 * DEG, 0.22 * DEG);
     this.vmKick = Math.min(0.08, this.vmKick + 0.03 + st.recoilV * 0.025);
     this.vmRot = Math.min(0.16, this.vmRot + 0.05 + st.recoilV * 0.04);
@@ -255,11 +259,11 @@ export class WeaponSystem {
       game.projectiles.push(p);
     } else {
       const spread = this.currentSpread() * DEG * 0.5;
-      const scoped = st.type === 'sniper' && this.adsT > 0.5;
-      const assisted = assistedDirection(game, pl, origin, fwd, scoped ? 2 : this.adsT > 0.5 ? 3.5 : 2.5, scoped ? 120 : 45);
       let anyHit = false, kill = false, head = false;
       for (let i = 0; i < st.pellets; i++) {
-        const d = spreadDir(assisted, spread, new THREE.Vector3());
+        // The same recoil-bearing sight ray drives damage, impact and tracer.
+        // Target magnetism would silently erase the recoil the player must aim.
+        const d = spreadDir(fwd, spread, new THREE.Vector3());
         const r = fireHitscan(game, pl, origin, d, st, st.name);
         if (r.ent) { anyHit = true; if (r.killed) kill = true; if (r.part === 'head') head = true; }
         if (i < 3 && (this.shotsInRow % 2 === 1 || st.pellets > 1 || st.fire !== 'auto')) game.effects.tracer(muzzleW.clone().addScaledVector(fwd, 0.5), r.point, [1.4, 1.0, 0.55]);
