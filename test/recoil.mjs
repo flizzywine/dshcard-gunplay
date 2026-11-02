@@ -12,8 +12,8 @@ function make(id = 'm4') {
 function shot(ws) { ws.shotAge = 0; ws.shotsInRow++; ws.kickRecoil(); }
 const ws = make();
 for (let i = 0; i < 500; i++) shot(ws);
-assert(ws.rp > 0 && ws.rp <= 8 * DEG, 'sustained fire must have a bounded upward displacement');
-assert(Math.abs(ws.ry) <= 1.1 * DEG, 'horizontal displacement stays controllable');
+assert(ws.rp > 0 && ws.rp <= 6.8 * DEG, 'sustained fire must have a bounded upward displacement');
+assert(Math.abs(ws.ry) <= .935 * DEG, 'horizontal displacement stays controllable');
 assert(ws.vmKick <= 0.08 && ws.vmRot <= 0.16, 'gun cannot accumulate unbounded movement');
 assert.deepEqual(ws.owner, { pitch: .2, yaw: -.3, crouchT: 0 }, 'fire preserves mouse aim');
 const paused = ws.rp; ws.updateRecoil(0); assert.equal(ws.rp, paused, 'pause does not recover recoil');
@@ -46,7 +46,7 @@ assert(Math.abs(ws.rp + baselineDelta - before + 2 * DEG) < 1e-12);
 const controlled = make();
 for (let i = 0; i < 100; i++) {
   shot(controlled);
-  assert(controlled.rp > .8 * DEG, 'each new shot still needs compensation during a long controlled burst');
+  assert(controlled.rp > .68 * DEG, 'each new shot still needs compensation during a long controlled burst');
   const delta = controlled.consumeRecoil('rp', -controlled.rp);
   assert.equal(delta, 0, 'compensation cannot permanently push the input baseline below the target');
 }

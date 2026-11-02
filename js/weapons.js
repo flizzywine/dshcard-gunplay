@@ -158,9 +158,9 @@ export class WeaponSystem {
     // Short bursts stay manageable; sustained fire builds more force after
     // the first three shots, with a ceiling rather than runaway rotation.
     const burstForce = 1 + 0.5 * clamp((this.shotsInRow - 3) / 9, 0, 1);
-    this.rp = Math.min(8 * DEG, this.rp + st.recoilV * 5.8 * DEG * adsMul * burstForce);
+    this.rp = Math.min(6.8 * DEG, this.rp + st.recoilV * 4.93 * DEG * adsMul * burstForce);
     const side = Math.sin(this.shotsInRow * 0.75) * 0.65 + Math.sin(this.shotsInRow * 2.4) * 0.35;
-    this.ry = clamp(this.ry + side * st.recoilH * 3 * DEG * adsMul * burstForce, -1.1 * DEG, 1.1 * DEG);
+    this.ry = clamp(this.ry + side * st.recoilH * 2.55 * DEG * adsMul * burstForce, -0.935 * DEG, 0.935 * DEG);
     this.vmKick = Math.min(0.08, this.vmKick + 0.03 + st.recoilV * 0.025);
     this.vmRot = Math.min(0.16, this.vmRot + 0.05 + st.recoilV * 0.04);
   }
