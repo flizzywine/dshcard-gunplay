@@ -45,8 +45,9 @@ const a = new THREE.Vector3(80, 1.5, -39), b = new THREE.Vector3(85, 1.5, -39);
 assert(world.lineBlocked(a, b), 'warehouse side panel blocks bullets before demolition');
 const fixed = world.fixedBoxes.slice(), revision = world.navVersion;
 const mode = game.mode = new JinquVoxelMatch(game, {}); mode.start();
-assert.equal(game.bots.filter(b => b.team === 'A').length, 3);
-assert.equal(game.bots.filter(b => b.team === 'B').length, 6);
+assert.equal(game.bots.length, 0, 'inspection never creates teammates or enemies');
+assert.equal(game.entities.length, 1);
+assert.equal(mode.flags.length, 5, 'all districts remain marked during inspection');
 assert.equal(game.player.ws.slots.length, 4);
 const direction = b.clone().sub(a).normalize();
 const rocket = new Projectile(game, 'rocket', a, direction.multiplyScalar(45), game.player, 5);
@@ -63,13 +64,19 @@ assert(!world.edit(new THREE.Vector3(-100, 1, 0), new THREE.Vector3(0, -1, 0), f
 let height = 0; for (let z = 42.2; z <= 56; z += .2) height = world.groundHeight(-68, z, height, .35);
 assert(height >= 3);
 const count = world.terrain.blocks.size;
-for (const entity of game.entities) if (entity !== game.player) entity.alive = false;
-for (let i = 0; i < 5 && !mode.over; i++) {
-  game.player.pos.copy(mode.flags.find(f => !f.captured).pos);
-  mode.updateCaptures(11);
+for (const flag of mode.flags) {
+  game.player.pos.copy(flag.pos);
+  mode.update(601);
 }
-assert.equal(mode.capturedCount, 5, 'all five actual map objectives can be captured');
-assert.equal(mode.sectorIndex, 2); assert(mode.over, 'full map reaches victory');
+assert.equal(mode.capturedCount, 0); assert.equal(mode.sectorIndex, 0);
+assert.equal(mode.timeLeft, 600); assert(!mode.over, 'inspection has no timer or automatic victory');
+game.time = 2;
+game.player.takeDamage(1000, { attacker: game.player, weapon: '测试火箭' });
+assert(!game.player.alive);
+mode.update(2);
+assert(game.player.alive, 'accidental demolition death still respawns');
+assert.equal(mode.tickets, 160, 'inspection does not consume a finite life budget');
+assert.equal(game.bots.length, 0, 'respawn cannot repopulate bots');
 mode.dispose(); game.player.ws.dispose(); for (const bot of game.bots) bot.dispose(); world.dispose();
 assert.equal(world.terrain.blocks.size, 0);
-console.log(`PASS Jinqu hybrid: ${paths} physical spawn/goal/flank routes; 21 voxel breach sites / ${count} remaining blocks; fixed buildings, stairs, actual rocket breach, 3 allies + 6 enemies, cleanup.`);
+console.log(`PASS Jinqu inspection: ${paths} physical routes; 21 breach sites / ${count} remaining blocks; player only, all five markers, no capture/time limit, safe respawn, cleanup.`);

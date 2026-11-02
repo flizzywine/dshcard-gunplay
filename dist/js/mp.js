@@ -31,8 +31,11 @@ export class MPMatch {
     for (let i = 0; i < this.cfg.allies; i++) { const b = this.addBot('A', names[i % names.length], def.styles[0]); b.squadIndex = i; }
     for (let i = 0; i < this.cfg.enemies; i++) this.addBot('B', names[(i + this.cfg.allies) % names.length], def.styles[1]);
     game.hud.reset(); game.hud.streaks(null, 0);
-    game.hud.announce('烬区 · 据点推进', '占领全部区域 · 10 分钟 · 我方 160 增援', 5);
-    game.audio.say('先夺下岩下村，再向前推进'); this.hudScore();
+    if (!this.mapInspection) {
+      game.hud.announce('烬区 · 据点推进', '占领全部区域 · 10 分钟 · 我方 160 增援', 5);
+      game.audio.say('先夺下岩下村，再向前推进');
+    }
+    this.hudScore();
   }
   buildLoadout() {
     return { weapons: ['m4', 'm870', 'l115', 'rpg'].map(id => ({ id, att: {}, camo: 'none' })), lethal: null, tactical: null, perks: [] };
@@ -155,7 +158,7 @@ export class MPMatch {
     }
     const damage = victim.dmgTaken?.get(pl);
     if (damage && killer !== pl && victim.team !== pl.team) { pl.stats.assists++; pl.stats.score += 25; game.hud.popup('+25 助攻', '#ddd'); }
-    if (victim.team === 'A') this.tickets = Math.max(0, this.tickets - 1);
+    if (victim.team === 'A' && !this.mapInspection) this.tickets = Math.max(0, this.tickets - 1);
     if (victim.isPlayer) {
       game.dead = true; game.deathKiller = killer; pl.stats.streak = 0;
       document.getElementById('deathScreen').classList.remove('hidden');
@@ -200,8 +203,10 @@ export class MPMatch {
   }
   update(dt) {
     if (this.over) return;
-    this.timeLeft = Math.max(0, this.timeLeft - dt);
-    if (this.timeLeft <= 0) { this.end('B', '进攻时间耗尽'); return; }
+    if (!this.mapInspection) {
+      this.timeLeft = Math.max(0, this.timeLeft - dt);
+      if (this.timeLeft <= 0) { this.end('B', '进攻时间耗尽'); return; }
+    }
     for (let i = this.respawns.length - 1; i >= 0; i--) {
       const r = this.respawns[i]; r.t -= dt;
       if (r.e.isPlayer) document.getElementById('respawnText').textContent = `${Math.max(0, r.t).toFixed(1)} 秒后自动回到战场`;

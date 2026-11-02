@@ -48,13 +48,26 @@ export class JinquVoxelWorld extends VoxelWorld {
 export class JinquVoxelMatch extends MPMatch {
   constructor(game, cfg) {
     super(game, cfg);
-    Object.assign(this.cfg, { map: 'voxel-jinqu', allies: 3, enemies: 6 });
+    Object.assign(this.cfg, { map: 'voxel-jinqu', allies: 0, enemies: 0 });
+    this.mapInspection = true;
   }
   start() {
     super.start();
-    this.game.hud.announce('烬区 · 体素破墙', '岩下村 → 营地 / 贫民窟 → 仓库 / 办公区 · 红墙可用火箭炸开', 6);
+    for (const objective of this.sectors.slice(1).flatMap(s => s.objectives)) {
+      this.flags.push({ ...objective, pos: objective.pos.clone(), captured: false, prog: 0,
+        mesh: this.flagMesh(objective.pos, objective.radius) });
+    }
+    this.game.hud.announce('烬区 · 地图检查', '无敌人、无队友、无倒计时 · 五个区域均可自由前往', 6);
+    this.hudScore();
+  }
+  updateCaptures() {} // Inspection never advances sectors or ends the session.
+  hudScore() {
+    const hud = this.game.hud;
+    hud.scorebar('<div class="sb-team a">仅玩家</div><div class="sb-time">地图检查</div><div class="sb-team b">不限时</div>');
+    hud.objective('自由检查烬区', '岩下村 · 临时营地 · 贫民窟 · 军需仓库 · 办公区', 'WASD 移动 · Shift 冲刺 · 4 火箭破墙 · Esc 暂停 / 重置地图');
+    hud.setMarkers(this.flags.map(f => ({ id: 'inspect-' + f.id, pos: f.pos.clone().add(new THREE.Vector3(0, 4, 0)), label: f.id, text: f.name, cls: 'flag' })));
   }
   scoreboardHTML() {
-    return super.scoreboardHTML().replace('你与九名友军', '你与三名友军').replace('二十名敌军', '六名敌军');
+    return super.scoreboardHTML().replace('你与九名友军', '地图检查 · 仅玩家').replace('二十名敌军', '无人');
   }
 }

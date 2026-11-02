@@ -20,7 +20,7 @@ m.showResults({win:'win',sub:'40 : 12',stats:[['击杀',24],['经验值','+100']
 m.showResults({win:'lose',sub:'12 : 40',stats:[]});assert.match(html,/进攻受挫，再来一次/);events['[data-action="menu"]:click']();assert.equal(exitCount,2);
 m.showMain();events['[data-action="settings"]:click']();events['[data-action="back"]:click']();assert.equal(m.screen,'main');
 m.game.voxelLab=true;m.game.voxelJinqu=true;m.showMain();
-assert.match(html,/进入烬区/);assert.match(html,/三阶段五据点/);assert.match(html,/map=lab/);assert(!html.includes('5 6 7 8'),'map mode hides command controls');
+assert.match(html,/进入烬区/);assert.match(html,/无队友、无敌人/);assert.match(html,/map=lab/);assert(!html.includes('5 6 7 8'),'map mode hides command controls');
 m.game.voxelJinqu=false;m.showMain();assert.match(html,/进入演练/);
 console.log('PASS menu: fixed configuration, start/double-start, pause/resume, settings, victory/defeat, replay and return-menu.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
