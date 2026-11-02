@@ -170,7 +170,7 @@ export class WeaponSystem {
     let hip = st.hip * (1 + spd / 6 * 0.6) * (pl.onGround ? 1 : 2.2) * (pl.crouchT > 0.5 ? 0.8 : 1);
     hip *= 1 + Math.min(this.shotsInRow, 10) * 0.03;
     const ads = st.adsSpread * (1 + spd / 6 * (st.type === 'sniper' ? 6 : 1.2));
-    return lerp(hip, ads, this.adsT);
+    return lerp(hip, ads, this.adsT) * (this.game.settings.spreadScale ?? 1);
   }
 
   fire() {
@@ -212,15 +212,16 @@ export class WeaponSystem {
     game.makeNoise(pl.pos, st.suppressed ? 12 : 70, pl.team);
     if (!st.suppressed) pl.revealT = 1.5;
     // 后坐力
-    const adsMul = lerp(1, 0.75, this.adsT) * (pl.crouchT > 0.5 ? 0.85 : 1);
+    const recoil = game.settings.recoilScale ?? 1;
+    const adsMul = lerp(1, 0.75, this.adsT) * (pl.prone ? 0.65 : pl.crouchT > 0.5 ? 0.85 : 1) * recoil;
     const kick = st.recoilV * 0.55 * DEG * adsMul;
     const side = (Math.random() - 0.4) * st.recoilH * 0.5 * DEG * adsMul;
     pl.pitch += kick * 0.55;
     this.rp += kick * 0.45;
     pl.yaw -= side;
-    this.vmKick += 0.02 + st.recoilV * 0.012;
-    this.vmRot += 0.02 + st.recoilV * 0.02;
-    pl.punch(st.recoilV * 0.004);
+    this.vmKick += (0.02 + st.recoilV * 0.012) * recoil;
+    this.vmRot += (0.02 + st.recoilV * 0.02) * recoil;
+    pl.punch(st.recoilV * 0.004 * recoil);
   }
   muzzleWorld(out) {
     const w = this.w;

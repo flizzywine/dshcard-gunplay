@@ -472,7 +472,7 @@ export class Menu {
     const rng = (k, label, min, max, step, fmt = v => v) => `<div class="set-row"><span>${label}</span><div style="display:flex;align-items:center;gap:12px"><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${S[k]}"><span class="val" data-v="${k}">${fmt(S[k])}</span></div></div>`;
     const sensitivity = (k, label, max) => `<div class="set-row"><span>${label}</span><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><button class="btn ghost small" aria-label="${label}降低20%" data-adjust="${k}" data-factor="0.8">−20%</button><input aria-label="${label}滑块" type="range" data-k="${k}" min="0.1" max="${max}" step="0.01" value="${S[k]}"><input aria-label="${label}数值" type="number" data-number="${k}" min="0.1" max="${max}" step="0.01" value="${S[k]}" style="width:84px;padding:8px;background:#171c20;color:#fff;border:1px solid #59636c"><button class="btn ghost small" aria-label="${label}提高25%" data-adjust="${k}" data-factor="1.25">+25%</button></div></div>`;
     const tog = (k, label) => `<div class="set-row"><span>${label}</span><div class="seg" data-t="${k}"><div data-v="1" class="${S[k] ? 'sel' : ''}">开</div><div data-v="0" class="${!S[k] ? 'sel' : ''}">关</div></div></div>`;
-    const fmts = { sens: v => (+v).toFixed(2), fov: v => v, volume: v => Math.round(v * 100) };
+    const fmts = { recoilScale: v => Math.round(v * 100) + '%', spreadScale: v => Math.round(v * 100) + '%', sens: v => (+v).toFixed(2), fov: v => v, volume: v => Math.round(v * 100) };
     const r = this.render(`
       <div class="settings">
         <div class="hdr" style="margin-bottom:20px">设置<small>画面 · 操作 · 音频</small></div>
@@ -482,6 +482,9 @@ export class Menu {
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">${[1, 2, 3, 5, 8, 12].map(v => `<button class="btn ghost small" data-sens="${v}">灵敏度 ${v}</button>`).join('')}<button class="btn ghost small" data-a="reset-sens">恢复原版灵敏度</button></div>
         <div style="font-size:12px;color:#aaa;line-height:1.8">滑动或直接输入，自动保存，无需刷新。灵敏度 0.1–20，统一控制普通视角和开镜；开镜后按瞄准镜倍率自动减速。</div>
         ${inGame ? '<button class="btn" data-a="test-sens" style="margin:12px 0">返回对局试手感</button>' : ''}
+        ${rng('recoilScale', '后坐力强度', 0, 2, 0.05, fmts.recoilScale)}
+        ${rng('spreadScale', '子弹随机散布', 0, 2, 0.05, fmts.spreadScale)}
+        <div style="font-size:12px;color:#aaa;line-height:1.8">100% 为原版，0% 关闭对应效果。后坐力影响实际枪口方向，散布影响子弹偏离准星的程度。修改自动保存。</div>
         ${rng('volume', '主音量', 0, 1, 0.01, fmts.volume)}
         ${tog('invertY', '反转 Y 轴')}
         ${tog('voice', '语音播报')}
@@ -490,7 +493,7 @@ export class Menu {
         <div class="keys">
           <div><b>WASD</b>移动</div><div><b>鼠标左/右键</b>射击 / 瞄准</div>
           <div><b>Shift</b>战术冲刺</div><div><b>C / Ctrl</b>蹲伏 · 冲刺中滑铲</div>
-          <div><b>空格</b>跳跃</div><div><b>R</b>换弹</div>
+          <div><b>Z</b>趴下 / 起身</div><div><b>空格</b>起身 / 跳跃</div><div><b>R</b>换弹</div>
           <div><b>1 / 2 / 滚轮</b>切换武器</div><div><b>V / 鼠标侧键</b>近战</div>
           <div><b>G</b>致命装备（按住烹饪）</div><div><b>Q</b>战术装备</div>
           <div><b>F</b>互动 / 拾取武器</div>

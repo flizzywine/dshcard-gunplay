@@ -54,7 +54,7 @@ const GradeShader = {
 
 class Game {
   constructor() {
-    this.settings = Object.assign({ sens: 1.0, fov: 70, quality: 'high', volume: .8, voice: false, invertY: false, showFps: true }, JSON.parse(localStorage.getItem('mf_settings') || '{}'));
+    this.settings = Object.assign({ sens: 1.0, recoilScale: 0.6, spreadScale: 0.65, fov: 70, quality: 'high', volume: .8, voice: false, invertY: false, showFps: true }, JSON.parse(localStorage.getItem('mf_settings') || '{}'));
     // One-time restoration also replaces the previously saved high sensitivity.
     if (!this.settings.originalControlsV1) {
       Object.assign(this.settings, { sens: 1, fov: 70, invertY: false, voice: false, originalControlsV1: true });
@@ -250,7 +250,7 @@ class Game {
     const I = this.input, K = I.keys, P = I.pressed;
     const s = {
       fwd: K.KeyW, back: K.KeyS, left: K.KeyA, right: K.KeyD,
-      sprint: K.ShiftLeft || K.ShiftRight, sprintPressed: P.ShiftLeft || P.ShiftRight, jumpPressed: P.Space, crouchPressed: P.KeyC || P.ControlLeft,
+      sprint: K.ShiftLeft || K.ShiftRight, sprintPressed: P.ShiftLeft || P.ShiftRight, jumpPressed: P.Space, pronePressed: P.KeyZ, crouchPressed: P.KeyC || P.ControlLeft,
       fire: !!(I.buttons & 1), ads: !!(I.buttons & 4),
       reloadPressed: P.KeyR, swapPressed: I.wheel !== 0, slot1: P.Digit1, slot2: P.Digit2,
       meleePressed: P.KeyV || P.Mouse3, lethalPressed: P.KeyG, lethal: K.KeyG, tacticalPressed: P.KeyQ, tactical: K.KeyQ,
