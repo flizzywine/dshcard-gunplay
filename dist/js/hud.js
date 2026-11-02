@@ -40,12 +40,30 @@ export class HUD {
     $('fade').style.opacity = 0; $('flashOverlay').style.opacity = 0; this.flashT = 0;
     $('announce').style.opacity = 0; $('scorebar').innerHTML = ''; $('streaks').innerHTML = '';
     this.markerEls = {};
+    this.hitT = 0; this.hitRank = 0;
+    $('hitmarker').style.opacity = 0; $('hitConfirm').textContent = '';
   }
   hitmarker(kill, head) {
+    const rank = kill ? 3 : head ? 2 : 1;
+    // A following body pellet/shot must not erase a fresh kill confirmation.
+    if (this.hitT > 0 && rank < this.hitRank) return;
     const h = $('hitmarker');
     h.classList.toggle('kill', !!kill);
-    h.style.opacity = 1; this.hitT = kill ? 0.35 : 0.18;
-    h.style.transform = `scale(${kill ? 1.3 : 1})`;
+    h.classList.toggle('head', !!head);
+    $('hitConfirm').textContent = kill ? head ? '爆头击杀' : '击杀' : head ? '爆头' : '';
+    this.hitRank = rank; this.hitScale = kill ? 1.28 : head ? 1.12 : 1;
+    this.hitLife = kill ? 0.44 : head ? 0.32 : 0.22;
+    this.hitT = this.hitLife;
+    this.updateHitmarker(0);
+  }
+  updateHitmarker(dt) {
+    if (!(this.hitT > 0)) return;
+    this.hitT = Math.max(0, this.hitT - dt);
+    const age = this.hitLife - this.hitT;
+    const snap = age < .04 ? age / .04 : Math.max(0, 1 - (age - .04) / .08);
+    const h = $('hitmarker');
+    h.style.transform = `scale(${this.hitScale * (1 + .18 * snap)})`;
+    h.style.opacity = Math.min(1, this.hitT / .12);
   }
   flash(t) { this.flashT = t; this.flashMax = t; }
   damageFrom(pos) {
@@ -135,7 +153,7 @@ export class HUD {
     else sc.classList.add('hidden');
     if (scoped) $('scopeZoom').textContent = (w?.stats.zoom || 1).toFixed(1) + '×';
     // 命中
-    if (this.hitT > 0) { this.hitT -= dt; if (this.hitT <= 0) $('hitmarker').style.opacity = 0; }
+    this.updateHitmarker(dt);
     // 闪光
     if (this.flashT > 0) { this.flashT -= dt; $('flashOverlay').style.opacity = clamp(this.flashT / Math.min(1.5, this.flashMax), 0, 1); }
     else $('flashOverlay').style.opacity = 0;

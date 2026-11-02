@@ -4,7 +4,7 @@ const root = path.resolve(__dirname, '..');
 const cases = [
   ['tests/menu.cjs'], ['tests/match.cjs'],
   ...['combat', 'abilities', 'ai-v2', 'recoil', 'recoil-ballistics'].map(n => ['--experimental-loader', './tests/three-loader.mjs', `tests/${n}.mjs`]),
-  ...['map', 'ai-world-v2', 'voxel'].map(n => ['--experimental-loader', './tests/world-loader.mjs', `tests/${n}.mjs`]),
+  ...['map', 'ai-world-v2', 'voxel', 'combat-feedback'].map(n => ['--experimental-loader', './tests/world-loader.mjs', `tests/${n}.mjs`]),
   ['--experimental-loader', './tests/integration-loader.mjs', 'tests/integration.mjs'],
   ['--experimental-loader', './tests/integration-loader.mjs', 'tests/optics.mjs'],
   ['--experimental-loader', './tests/review-v2-loader.mjs', 'tests/review-v2.mjs'],

@@ -115,9 +115,9 @@ export class Audio {
     const g2 = c.createGain(); g2.gain.setValueAtTime(0.6, t); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
     n2.connect(g2); g2.connect(o); n2.start(t); n2.stop(t + 0.3);
   }
-  tone(freq, dur, vol = 0.2, type = 'sine', pos = null, slide = 0) {
+  tone(freq, dur, vol = 0.2, type = 'sine', pos = null, slide = 0, delay = 0) {
     if (!this.ctx) return;
-    const c = this.ctx, t = c.currentTime;
+    const c = this.ctx, t = c.currentTime + delay;
     const sp = this.spatial(pos);
     const o = this.out(vol * sp.gain, sp.pan, 0.05);
     const os = c.createOscillator(); os.type = type; os.frequency.setValueAtTime(freq, t);
@@ -136,9 +136,14 @@ export class Audio {
     n.connect(bp); bp.connect(g); g.connect(o); n.start(t); n.stop(t + dur + 0.02);
   }
   hit(kill = false, head = false) {
-    this.click(head ? 5200 : 3800, 0.05, 0.5);
-    if (head) this.tone(1800, 0.08, 0.15, 'triangle');
-    if (kill) { this.tone(700, 0.12, 0.25, 'triangle'); setTimeout(() => this.tone(520, 0.14, 0.2, 'triangle'), 60); }
+    this.click(head ? 5200 : 2200, head ? 0.035 : 0.045, head ? 0.42 : 0.32);
+    this.tone(180, 0.045, 0.12, 'sine', null, 0.5);
+    if (head) this.tone(1800, 0.085, 0.2, 'triangle');
+    // Schedule on the audio clock: no delayed JS callback leaking into a replay.
+    if (kill) {
+      this.tone(880, 0.1, 0.24, 'triangle');
+      this.tone(1320, 0.14, 0.2, 'triangle', null, 0, 0.065);
+    }
   }
   hurt() { this.click(400, 0.12, 0.5); this.tone(120, 0.2, 0.3, 'sine', null, 0.6); }
   step(pos, surface = 'dirt', vol = 0.18) {

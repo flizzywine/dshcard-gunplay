@@ -176,6 +176,11 @@ html, body { position: fixed; inset: 0; }
 #hitmarker i:nth-child(3) { transform: translate(-8px,4px) rotate(45deg); }
 #hitmarker i:nth-child(4) { transform: translate(6px,4px) rotate(-45deg); }
 #hitmarker.kill i { background: #ff3b30; }
+#hitmarker.head i { background: #ffc247; }
+#hitmarker.kill.head i { background: #ff6654; }
+#hitConfirm { position: absolute; top: 27px; left: 0; transform: translateX(-50%); white-space: nowrap; color: #fff; font-size: 12px; font-weight: 700; letter-spacing: 2px; text-shadow: 0 1px 3px #000; }
+#hitmarker.head #hitConfirm { color: #ffc247; }
+#hitmarker.kill #hitConfirm { color: #ff7767; }
 #scope { position: absolute; inset: 0; --scope-size: 78vmin; }
 .scope-hole { position: absolute; left: 50%; top: 50%; width: var(--scope-size); height: var(--scope-size); transform: translate(-50%,-50%); border-radius: 50%; border: 9px solid #26302d; box-shadow: 0 0 0 200vmax #080b0a, 0 0 0 13px #111915, inset 0 0 24px 9px rgba(0,0,0,.65); }
 .scope-h { position: absolute; left: 50%; transform: translateX(-50%); width: var(--scope-size); top: 50%; height: 1px; background: #111; }

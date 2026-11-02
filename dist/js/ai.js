@@ -85,7 +85,11 @@ export class Bot {
     this.hp -= dmg;
     const a = info.attacker;
     if (a) this.dmgTaken.set(a, (this.dmgTaken.get(a) || 0) + dmg);
-    this.anim.recoil = 0.5;
+    // Incoming hit reaction is independent of the bot's outgoing muzzle recoil.
+    this.anim.hitReact = 1;
+    this.anim.hitHead = info.head ? 1 : 0;
+    const dir = info.dir;
+    this.anim.hitSide = dir ? clamp(dir.x * Math.cos(this.yaw) - dir.z * Math.sin(this.yaw), -1, 1) : 0;
     // 被攻击时立即察觉
     if (a && a.alive && a.pos) {
       this.lastSeenPos = a.pos.clone(); this.lastSeenT = this.game.time;
@@ -114,6 +118,7 @@ export class Bot {
   respawn(pos, yaw) {
     this.pos.copy(pos); this.vel.set(0, 0, 0); this.yaw = yaw; this.hp = this.maxHp; this.alive = true;
     this.anim.dead = false; this.anim.deadT = 0; this.model.root.rotation.set(0, yaw, 0);
+    this.anim.hitReact = this.anim.hitHead = this.anim.hitSide = this.anim.recoil = 0;
     this.mag = this.stats.mag; this.target = null; this.targetVisible = false; this.lastSeenPos = null; this.path = null; this.goal = null; this.nextPathT = 0; this.reloadPending = false; this.command = null; this.missionGoal = null; this.missionRefresh = 0; this.recoveryUntil = 0;
     this.stunT = 0; this.grenades = 0; this.reloadT = 0; this.streak = 0;
     if (this.tag) this.tag.visible = true;
@@ -267,6 +272,7 @@ export class Bot {
     if (this.reloadPending && this.reloadT <= 0) { this.mag = this.stats.mag; this.reloadPending = false; }
     this.model.flash.visible = this.flashT > 0;
     A.recoil = damp(A.recoil, 0, 10, dt);
+    A.hitReact = damp(A.hitReact || 0, 0, 13, dt);
 
     const desired = _d.set(0, 0, 0);
     let lookYaw = null, lookPitch = 0;

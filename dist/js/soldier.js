@@ -160,6 +160,7 @@ export function animateSoldier(p, s, dt) {
     p.hips.position.y = 0.95 - e * 0.75;
     p.legL.leg.rotation.x = e * 0.3; p.legR.leg.rotation.x = -e * 0.2;
     p.torso.rotation.x = 0;
+    p.torso.rotation.z = 0; p.neck.rotation.set(0, 0, 0);
     return;
   }
   const c = s.crouch;
@@ -172,7 +173,10 @@ export function animateSoldier(p, s, dt) {
   p.legL.knee.rotation.x = baseKnee - Math.max(0, -Math.cos(s.phase)) * 0.9 * amp;
   p.legR.knee.rotation.x = baseKnee - Math.max(0, Math.cos(s.phase)) * 0.9 * amp;
   p.hips.position.y = 0.95 - c * 0.36 + (moving ? Math.abs(Math.cos(s.phase)) * 0.04 * amp : 0);
-  p.torso.rotation.x = s.pitch * 0.8 - c * 0.1 + (s.recoil || 0) * 0.12;
+  const hit = s.hitReact || 0;
+  p.torso.rotation.x = s.pitch * 0.8 - c * 0.1 + (s.recoil || 0) * 0.12 - hit * 0.22;
   p.torso.rotation.y = moving ? sw * 0.06 : 0;
-  p.neck.rotation.x = s.pitch * 0.2;
+  p.torso.rotation.z = hit * (s.hitSide || 0) * 0.16;
+  p.neck.rotation.x = s.pitch * 0.2 - hit * (s.hitHead || 0) * 0.3;
+  p.neck.rotation.z = hit * (s.hitSide || 0) * 0.1;
 }
