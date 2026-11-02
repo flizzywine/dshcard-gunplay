@@ -23,6 +23,7 @@ import { buildGun } from './gunmodel.js';
 import { DEFAULT_CLASSES, DEFAULT_STREAKS } from './data.js';
 import { damp } from './util.js';
 import { VoxelWorld } from './voxel/world.js';
+import { JinquVoxelWorld, JinquVoxelMatch } from './voxel/jinqu.js';
 import { VoxelMatch } from './voxel/match.js';
 
 const GradeShader = {
@@ -62,6 +63,7 @@ function readSaved(key, fallback) { try { return JSON.parse(localStorage.getItem
 class Game {
   constructor() {
     this.voxelLab = new URLSearchParams(globalThis.location?.search || '').get('mode') === 'voxel';
+    this.voxelJinqu = this.voxelLab && new URLSearchParams(globalThis.location?.search || '').get('map') !== 'lab';
     this.settings = Object.assign({ sens: 1.0, adsSens: 0.9, aimMode: 'hold', fov: 78, quality: 'low', volume: 0.8, voice: true, invertY: false, showFps: true }, readSaved('pixel_rush_settings', {}));
     this.profile = Object.assign({ xp: 0, classes: JSON.parse(JSON.stringify(DEFAULT_CLASSES)), streaks: [...DEFAULT_STREAKS], selClass: 0, campaignBest: null }, {});
     if (!this.profile.classes || this.profile.classes.length < 5) this.profile.classes = JSON.parse(JSON.stringify(DEFAULT_CLASSES));
@@ -258,10 +260,11 @@ class Game {
     this.nvg = false;
   }
   loadMap(id) {
-    if (id === 'voxel-lab') {
-      const w = this.world = new VoxelWorld(this);
-      this.scene.background = new THREE.Color(0x9ab8b1);
-      this.scene.fog = new THREE.FogExp2(0x9ab8b1, .009);
+    if (id === 'voxel-lab' || id === 'voxel-jinqu') {
+      const jinqu = id === 'voxel-jinqu';
+      const w = this.world = jinqu ? new JinquVoxelWorld(this) : new VoxelWorld(this);
+      this.scene.background = new THREE.Color(jinqu ? 0xd5e2ed : 0x9ab8b1);
+      this.scene.fog = new THREE.FogExp2(jinqu ? 0xc9bd9d : 0x9ab8b1, jinqu ? .0025 : .009);
       w.root.add(new THREE.HemisphereLight(0xe9f5ed, 0x536047, 2.5));
       const sun = new THREE.DirectionalLight(0xffedc9, 2.8); sun.position.set(12, 25, 14); w.root.add(sun);
       w.build();
@@ -299,8 +302,8 @@ class Game {
     this.renderPass.scene = this.scene; this.renderPass.camera = this.camera;
     this.vmPass.enabled = true;
     if (this.voxelLab) {
-      this.loadMap('voxel-lab');
-      this.mode = new VoxelMatch(this, cfg);
+      this.loadMap(this.voxelJinqu ? 'voxel-jinqu' : 'voxel-lab');
+      this.mode = this.voxelJinqu ? new JinquVoxelMatch(this, cfg) : new VoxelMatch(this, cfg);
     } else if (kind === 'mp') {
       this.loadMap(cfg.map);
       this.mode = new MPMatch(this, cfg);
@@ -429,6 +432,7 @@ class Game {
     this.hud.update(dt);
   }
   handleCommands(inp) {
+    if (this.voxelJinqu) return;
     if (!this.mode?.issueCommand) return;
     if (inp.scopePressed) { this.commandScope = this.commandScope === 'all' ? 'squad' : 'all'; this.hud.popup(this.voxelLab ? '指挥范围：先锋' : this.commandScope === 'all' ? '指挥范围：全部 9 名队友' : '指挥范围：先锋 3 人小队', '#83dcff'); }
     if (!inp.command) return;

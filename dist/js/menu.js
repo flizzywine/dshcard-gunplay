@@ -44,10 +44,17 @@ export class Menu {
   render(html,screen='main'){this.screen=screen;this.el.innerHTML=`<div class="screen rush-screen ${screen==='main'?'rush-main':'rush-overlay'}">${html}</div>`;return this.el.firstChild;}
   hide(){this.el.innerHTML='';this.screen='';this.overlayOpen=false;}
   on(root,action,fn){root.querySelector(`[data-action="${action}"]`)?.addEventListener('click',fn);}
-  controls(){return `<div class="rush-controls"><span><kbd>WASD / Shift / 空格 / C</kbd>移动 / 冲刺 / 跳 / 蹲滑</span><span><kbd>鼠标 / R</kbd>射击瞄准 / 换弹</span><span><kbd>1—4 / 滚轮</kbd>步枪 / 霰弹 / 狙击 / 火箭</span><span><kbd>Z X F Q</kbd>突进 / 燃烧 / 补给 / 侦察</span><span><kbd>B / E</kbd>召唤机甲 / 驾驶退出</span><span><kbd>5 6 7 8</kbd>跟随 / 进攻 / 守点 / 集火</span><span><kbd>T</kbd>小队 / 全体</span><span><kbd>Tab / Esc</kbd>战绩 / 暂停</span></div>`;}
+  controls(){return `<div class="rush-controls"><span><kbd>WASD / Shift / 空格 / C</kbd>移动 / 冲刺 / 跳 / 蹲滑</span><span><kbd>鼠标 / R</kbd>射击瞄准 / 换弹</span><span><kbd>1—4 / 滚轮</kbd>步枪 / 霰弹 / 狙击 / 火箭</span><span><kbd>Z X F Q</kbd>突进 / 燃烧 / 补给 / 侦察</span><span><kbd>B / E</kbd>召唤机甲 / 驾驶退出</span>${this.game.voxelJinqu ? '' : '<span><kbd>5 6 7 8</kbd>跟随 / 进攻 / 守点 / 集火</span><span><kbd>T</kbd>小队 / 全体</span>'}<span><kbd>Tab / Esc</kbd>战绩 / 暂停</span></div>`;}
 
   start(){if(this.starting)return;this.starting=true;document.getElementById('deathScreen').classList.add('hidden');this.game.hud.showScoreboard(false);this.game.startGame('mp',{...QUICK_MATCH}).catch(e=>{this.starting=false;const r=this.render(`<section class="rush-dialog"><h1>部署遇到问题</h1><p>${escape(e.message)}</p><button class="btn" data-action="back">返回菜单</button></section>`,'error');this.on(r,'back',()=>this.showMain());}).finally(()=>{this.starting=false;});}
   showMain(){this.overlayOpen=false;this.starting=false;
+    if(this.game.voxelJinqu){
+      const r=this.render(`<div class="rush-top"><span class="rush-mark">▦ PIXEL RUSH</span><span>烬区 · 体素破墙</span></div>
+      <section class="rush-hero"><div class="rush-eyebrow">穿过岩村，打进城区。</div><h1>烬区<br><em>突击</em><span>＋</span></h1><p class="rush-description">沿岩下村、营地与贫民窟推进，<br>用火箭炸开红墙，突破仓库与办公区。</p><button class="rush-start" data-action="start">进入烬区 <span>→</span></button><div class="rush-session">你 + 3 名友军 <i> / </i> 6 名敌军 <i> / </i> 三阶段五据点</div><button class="rush-link" data-action="settings">灵敏度与声音 ↗</button><a class="rush-link" href="?mode=voxel&map=lab">返回破墙演练 ↗</a></section>
+      <aside class="rush-card"><span class="rush-card-tag">行动简报 / JINQU</span><div class="rush-route"><div><b>A</b><span>岩下村</span></div><i>→</i><div><b>B1 + B2</b><span>临时营地 / 贫民窟</span></div><i>→</i><div><b>C1 + C2</b><span>军需仓库 / 办公区</span></div></div><div class="rush-tip">进入据点清除守军即可占领；同阶段双点全部拿下后，出生点前移。</div><div class="rush-tip"><strong>红墙与沙袋可炸开</strong><br>岩壁、地基、楼体保持固定。友军自主推进，无需下达指令。</div></aside>
+      <footer class="rush-bottom"><div class="rush-platform">电脑键鼠 · 点击画面锁定鼠标，Esc 暂停</div>${this.controls()}<div class="rush-credit">沿用项目现有《烬区》灰盒布局 · 固定主体 + 局部体素破坏 · 非原作资产</div></footer>`);
+      this.on(r,'start',()=>this.start());this.on(r,'settings',()=>this.showSettings('main'));return;
+    }
     if(this.game.voxelLab){
       const r=this.render(`<div class="rush-top"><span class="rush-mark">▦ PIXEL RUSH</span><span>体素突击 · 破墙演练</span></div>
       <section class="rush-hero"><div class="rush-eyebrow">墙后，就是下一条路。</div><h1>体素<br><em>突击</em><span>＋</span></h1><p class="rush-description">用火箭炸开方块墙，让队友穿过缺口。<br>也可以拆墙、搭掩体，改变交火路线。</p><button class="rush-start" data-action="start">进入演练 <span>→</span></button><div class="rush-session">你与先锋 <i> / </i> 一名守卫 <i> / </i> 一个据点</div><a class="rush-link" href="./">返回推进攻防 ↗</a></section>
@@ -56,7 +63,7 @@ export class Menu {
       this.on(r,'start',()=>this.start());return;
     }
     const r=this.render(`<div class="rush-top"><span class="rush-mark">▦ PIXEL RUSH</span><span>推进攻防 · 02</span></div>
-    <section class="rush-hero"><div class="rush-eyebrow">你是尖刀，也是指挥官。</div><h1>像素<br><em>突击</em><span>＋</span></h1><p class="rush-description">打穿防线，打开新路。<br>指挥队友、切换火力，亲自驾驶机甲推进。</p><button class="rush-start" data-action="start">开始爽一局 <span>→</span></button><div class="rush-session">烬区灵感灰盒 <i> / </i> 推进攻防 <i> / </i> 10 分钟</div><button class="rush-link" data-action="settings">灵敏度与声音 ↗</button><a class="rush-link" href="?mode=voxel">试试体素破墙演练 ↗</a></section>
+    <section class="rush-hero"><div class="rush-eyebrow">你是尖刀，也是指挥官。</div><h1>像素<br><em>突击</em><span>＋</span></h1><p class="rush-description">打穿防线，打开新路。<br>指挥队友、切换火力，亲自驾驶机甲推进。</p><button class="rush-start" data-action="start">开始爽一局 <span>→</span></button><div class="rush-session">烬区灵感灰盒 <i> / </i> 推进攻防 <i> / </i> 10 分钟</div><button class="rush-link" data-action="settings">灵敏度与声音 ↗</button><a class="rush-link" href="?mode=voxel">进入烬区体素破墙 ↗</a></section>
     <aside class="rush-card"><span class="rush-card-tag">行动简报 / ASSAULT</span><div class="rush-versus"><b>你 + 9<small>友方人机</small></b><span>VS</span><b>20<small>敌方人机</small></b></div><div class="rush-route" aria-label="推进路线：A岩下村，B营地和贫民窟，C仓库和办公区"><div><b>A</b><span>岩下村</span></div><i>→</i><div><b>B1 + B2</b><span>营地 / 贫民窟</span></div><i>→</i><div><b>C1 + C2</b><span>仓库 / 办公区</span></div></div><div class="rush-tip">逐区打开防线，双点全部拿下再前进。<br><strong>160 增援</strong> · 每区补充 40</div></aside>
     <footer class="rush-bottom"><div class="rush-platform">需电脑键盘 + 鼠标 · 点击画面锁定鼠标，Esc 释放</div>${this.controls()}<div class="rush-credit">基于 OPUS5.5-COD 改编 · 地图为资料参考近似重建，非原作资产 · 无联网对战</div></footer>`);
     this.on(r,'start',()=>this.start());this.on(r,'settings',()=>this.showSettings('main'));

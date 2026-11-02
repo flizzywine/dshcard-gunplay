@@ -19,7 +19,7 @@ export class MPMatch {
     this.lastKillTimes = []; this.capturedCount = 0; this.targeting = null;
   }
   start() {
-    const game = this.game, def = MAPS[this.cfg.map];
+    const game = this.game, def = game.world.def || MAPS[this.cfg.map];
     this.sectors = def.sectors;
     if (!this.sectors?.length) throw new Error('推进地图缺少 sectors 定义');
     this.activateSector(0, false);
@@ -28,8 +28,8 @@ export class MPMatch {
     const pl = game.player = new Player(game, { team: 'A', pos: sp.pos, yaw: sp.yaw, name: '你' });
     pl.equip(this.buildLoadout()); game.entities.push(pl);
     const names = BOT_NAMES.slice();
-    for (let i = 0; i < 9; i++) { const b = this.addBot('A', names[i % names.length], def.styles[0]); b.squadIndex = i; }
-    for (let i = 0; i < 20; i++) this.addBot('B', names[(i + 9) % names.length], def.styles[1]);
+    for (let i = 0; i < this.cfg.allies; i++) { const b = this.addBot('A', names[i % names.length], def.styles[0]); b.squadIndex = i; }
+    for (let i = 0; i < this.cfg.enemies; i++) this.addBot('B', names[(i + this.cfg.allies) % names.length], def.styles[1]);
     game.hud.reset(); game.hud.streaks(null, 0);
     game.hud.announce('烬区 · 据点推进', '占领全部区域 · 10 分钟 · 我方 160 增援', 5);
     game.audio.say('先夺下岩下村，再向前推进'); this.hudScore();

@@ -10,9 +10,10 @@ export const VOXEL_MAP = {
 };
 
 export class VoxelWorld extends World {
-  constructor(game) {
-    super(game, VOXEL_MAP);
+  constructor(game, def = VOXEL_MAP) {
+    super(game, def);
     this.terrain = new VoxelTerrain(this.root);
+    this.fixedBoxes = [];
     this.env = { exposure: 1 };
     this.removedBlocks = 0;
     this.lastEdit = null;
@@ -36,10 +37,10 @@ export class VoxelWorld extends World {
   commit() {
     if (!this.terrain.flush()) return false;
     // Render, raycasts, collision and navigation derive from this same revision.
-    this.boxes = [...this.terrain.blocks.values()].map(block => ({
+    this.boxes = this.fixedBoxes.concat([...this.terrain.blocks.values()].map(block => ({
       x0: block.x, x1: block.x + 1, y0: block.y, y1: block.y + 1,
       z0: block.z, z1: block.z + 1, mat: block.type, voxel: block,
-    }));
+    })));
     this.buildSpatialIndex(); this.buildGrid();
     this.navVersion = ++this.navRevision;
     if (typeof document !== 'undefined') this.buildTopDown();
@@ -71,11 +72,14 @@ export class VoxelWorld extends World {
   }
 
   edit(origin, direction, place = false) {
-    const hit = this.raycast(origin, direction, 8), b = hit?.box.voxel;
+    const hit = this.raycast(origin, direction, 8);
+    const b = hit?.box.voxel || (hit?.box.foundation ? { x: Math.floor(hit.point.x), y: -1, z: Math.floor(hit.point.z) } : null);
     if (!b) return false;
     if (place) {
       const x = b.x + hit.normal.x, y = b.y + hit.normal.y, z = b.z + hit.normal.z;
-      if (x <= -20 || x >= 19 || z <= -20 || z >= 19 || y < 0 || y > 5 || this.terrain.get(x, y, z)) return false;
+      if (x <= -this.half || x >= this.half - 1 || z <= -this.half || z >= this.half - 1 || y < 0 || y > (this.def.maxBuildHeight || 5) || this.terrain.get(x, y, z)) return false;
+      if (this.fixedBoxes.some(b => x < b.x1 && x + 1 > b.x0 &&
+        y < b.y1 && y + 1 > b.y0 && z < b.z1 && z + 1 > b.z0)) return false;
       if (this.game.entities.some(e => e.alive && e.pos &&
         e.pos.x + (e.radius || .35) > x && e.pos.x - (e.radius || .35) < x + 1 &&
         e.pos.z + (e.radius || .35) > z && e.pos.z - (e.radius || .35) < z + 1 &&

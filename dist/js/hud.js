@@ -228,6 +228,7 @@ export class HUD {
     const slots = $('weaponSlots'); if (slots) slots.innerHTML = p.ws.slots.map((s, i) => `<span class="weapon-slot ${p.ws.cur === i ? 'selected' : ''}"><kbd>${i + 1}</kbd><span>${labels[i]}</span></span>`).join('');
     const command = $('commandPanel');
     if (command) {
+      command.style.display = g.voxelJinqu ? 'none' : '';
       const active = g.bots.filter(b => b.team === p.team && b.command && b.command.expiresAt > g.time);
       command.innerHTML = `<b>指挥 · ${g.voxelLab ? '先锋 1 人' : g.commandScope === 'all' ? '全队 9 人' : '先锋 3 人'} <small>[T] 切换</small></b><div>5 跟随　6 进攻　7 守点　8 集火</div><small>${active.length ? active.length + ' 人执行指令 · 35 秒后恢复推进' : '队友自主推进 · 准星指向位置/敌人下令'}</small>`;
     }
