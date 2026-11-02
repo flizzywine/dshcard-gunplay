@@ -26,6 +26,7 @@ export class Player {
     this.lastAttacker = null;
     this.interactHold = 0;
     this.radius = 0.35;
+    this.aimLatched = false;
   }
   hasPerk(id) { return this.perks.has(id); }
   equip(loadout) {
@@ -40,6 +41,7 @@ export class Player {
     this.loadout = loadout;
   }
   respawn(pos, yaw) {
+    this.resetAim(); this.ws.resetRecoil();
     this.pos.copy(pos); this.vel.set(0, 0, 0); this.yaw = yaw; this.pitch = 0;
     this.hp = this.maxHp; this.alive = true; this.dmgT = 99; this.crouchT = 0; this.crouching = false; this.sliding = false;
     this.eyeSmooth = pos.y + 1.62; this.stats.streak = 0;
@@ -72,7 +74,7 @@ export class Player {
     if (!info.burn || Math.random() < 0.1) this.game.audio.hurt();
     this.punch(0.02);
     if (this.hp <= 0) {
-      this.hp = 0; this.alive = false; this.stats.deaths++;
+      this.hp = 0; this.alive = false; this.resetAim(); this.stats.deaths++;
       this.game.onKill(info.attacker, this, info.weapon, info.head);
       return true;
     }
@@ -82,15 +84,30 @@ export class Player {
   punch(a) { this.punchV += a; }
   cancelSprint() { this.sprinting = false; this.sprintLock = 0.25; }
 
+  resetAim() { this.aimLatched = false; }
+  resolveAim(input) {
+    if (this.game.settings.aimMode !== 'toggle') {
+      this.resetAim();
+      return !!input.ads;
+    }
+    if (input.cancelAim || (input.sprint && input.fwd)) {
+      this.resetAim();
+      return false;
+    }
+    if (input.adsPressed) this.aimLatched = !this.aimLatched;
+    return this.aimLatched;
+  }
+
   update(dt, input) {
     const game = this.game, world = game.world;
     if (!this.alive) return;
+    input = { ...input, ads: this.resolveAim(input) };
     // 视角
     const ws = this.ws;
     const zoom = lerp(1, ws.w ? ws.w.stats.zoom : 1, ws.adsT);
     const sens = game.settings.sens * 0.0022 * (ws.adsT > 0.5 ? game.settings.adsSens / Math.pow(zoom, 0.85) : 1);
-    this.yaw -= input.mdx * sens;
-    this.pitch -= input.mdy * sens * (game.settings.invertY ? -1 : 1);
+    this.yaw += ws.consumeRecoil('ry', -input.mdx * sens);
+    this.pitch += ws.consumeRecoil('rp', -input.mdy * sens * (game.settings.invertY ? -1 : 1));
     this.pitch = clamp(this.pitch, -1.5, 1.5);
     // 姿态
     if (input.crouchPressed) {
@@ -191,12 +208,11 @@ export class Player {
     if (input.lethalPressed && this.lethal) ws.beginThrow('lethal', this.lethal.id);
     if (input.tacticalPressed && this.tactical) ws.beginThrow('tactical', this.tactical.id);
     if (ws.state === 'cook' && !input.lethal && !input.tactical) ws.endThrow();
-    ws.update(dt, input);
-    // 相机
     this.updateCamera(dt);
+    ws.update(dt, input);
+    this.syncCamera();
   }
   updateCamera(dt) {
-    const cam = this.game.camera, ws = this.ws;
     const eyeT = this.pos.y + this.curEye() - (this.sliding ? 0.25 : 0);
     this.eyeSmooth = damp(this.eyeSmooth, eyeT, 18, dt);
     if (Math.abs(this.eyeSmooth - eyeT) > 1) this.eyeSmooth = eyeT;
@@ -208,18 +224,25 @@ export class Player {
       const a = this.shakeAmt * (this.shakeT / 0.6);
       sx = (Math.random() - 0.5) * a * 0.05; sy = (Math.random() - 0.5) * a * 0.05;
     }
+    this.cameraShakeX = sx; this.cameraShakeY = sy;
+    this.syncCamera();
+  }
+
+  syncCamera() {
+    const cam = this.game.camera, ws = this.ws;
     const spd = Math.hypot(this.vel.x, this.vel.z);
     const bob = this.onGround ? Math.sin(ws.bobPhase * 2) * 0.02 * Math.min(1, spd / 6) * (1 - ws.adsT) : 0;
     cam.position.set(this.pos.x, this.eyeSmooth - this.landDip + bob, this.pos.z);
     cam.rotation.order = 'YXZ';
-    cam.rotation.y = this.yaw + sx;
-    cam.rotation.x = this.pitch + ws.rp + this.punchV + sy;
+    cam.rotation.y = this.yaw + ws.ry + (this.cameraShakeX || 0);
+    cam.rotation.x = this.pitch + ws.rp + this.punchV + (this.cameraShakeY || 0);
     cam.rotation.z = this.sliding ? -0.06 : (ws.sprintT * Math.sin(ws.bobPhase) * 0.01);
     const zoom = lerp(1, ws.w ? ws.w.stats.zoom : 1, ws.adsT * ws.adsT);
     const base = this.game.settings.fov;
     const f = 2 * Math.atan(Math.tan(base * DEG / 2) / zoom) / DEG;
-    cam.fov = f + (this.sprinting ? 4 : 0) * (1 - ws.adsT);
-    cam.updateProjectionMatrix();
+    const fov = f + (this.sprinting ? 4 : 0) * (1 - ws.adsT);
+    if (cam.fov !== fov) { cam.fov = fov; cam.updateProjectionMatrix(); }
+    ws.syncViewmodelCamera();
     this.game.audio.setListener(cam.position, this.yaw);
   }
 }

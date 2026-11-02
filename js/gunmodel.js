@@ -47,7 +47,18 @@ export function buildGun(weaponId, att = {}, camo = 'none', opts = {}) {
     add(bgeo(0.02, 0.04, 0.02), metal, 0, 0.12, 0.08);
     info.mag = wh;
     info.muzzle.position.set(0, 0.06, -0.8);
-    info.sight.set(0, 0.14, 0.14);
+    // An elevated open ladder sight keeps the launch tube below the aiming line.
+    const sy = .205, sz = .02;
+    add(bgeo(.04, .045, .025), metal, 0, .14, sz);
+    for (const x of [-.031, .031]) add(bgeo(.004, .074, .014), metal, x, sy, sz);
+    for (const y of [-.035, .035]) add(bgeo(.066, .004, .014), metal, 0, sy + y, sz);
+    add(new THREE.PlaneGeometry(.058, .066), mat('lens'), 0, sy, sz);
+    const ret = info.reticle = new THREE.Group(); ret.position.set(0, sy, sz + .001); root.add(ret);
+    add(new THREE.PlaneGeometry(.018, .0007), mat('reticle'), 0, 0, 0, 0, 0, 0, ret);
+    add(new THREE.PlaneGeometry(.0007, .025), mat('reticle'), 0, 0, 0, 0, 0, 0, ret);
+    for (const y of [-.009, -.018]) add(new THREE.PlaneGeometry(.007, .0007), mat('reticle'), 0, y, 0, 0, 0, 0, ret);
+    info.optic = 'ladder'; info.eyeRelief = .24;
+    info.sight.copy(ret.position);
     info.leftHand.set(0, -0.02, -0.2);
     root.add(info.muzzle);
     return info;
@@ -135,7 +146,7 @@ export function buildGun(weaponId, att = {}, camo = 'none', opts = {}) {
   info.muzzle.position.set(0, 0.035, muzzleZ);
   // 机械瞄具
   const optic = att.optic || (def.defaultOptic && !att.optic ? def.defaultOptic : null);
-  const sightY = railY + 0.035;
+  const sightY = railY + 0.06;
   if (!optic) {
     add(bgeo(0.004, 0.035, 0.006), metal, 0, railY + 0.02, hz1 + 0.02);
     add(bgeo(0.02, 0.012, 0.012), metal, 0, railY + 0.006, hz1 + 0.02);
@@ -146,22 +157,26 @@ export function buildGun(weaponId, att = {}, camo = 'none', opts = {}) {
   info.optic = optic || 'iron';
   const oz = zRear - recv * 0.45;
   if (optic === 'reddot') {
-    add(bgeo(0.03, 0.012, 0.04), metal, 0, railY + 0.018, oz);
-    add(cgeo(0.02, 0.02, 0.04, 16), metal, 0, sightY, oz);
-    add(new THREE.CircleGeometry(0.017, 16), mat('lens'), 0, sightY, oz - 0.021);
-    info.reticle = add(new THREE.CircleGeometry(0.0009, 10), mat('reticle'), 0, sightY, oz - 0.022);
-    info.sight.set(0, sightY, oz + 0.1);
+    add(bgeo(0.034, 0.02, 0.05), metal, 0, railY + 0.023, oz);
+    // An open tube plus annular rims: capped cylinders seal the sight picture.
+    const tube = new THREE.CylinderGeometry(0.031, 0.031, 0.05, 32, 1, true).rotateX(Math.PI / 2);
+    add(tube, metal, 0, sightY, oz);
+    for (const z of [oz - .025, oz + .025]) add(new THREE.RingGeometry(.026, .031, 32), metal, 0, sightY, z);
+    add(new THREE.CircleGeometry(.026, 32), mat('lens'), 0, sightY, oz);
+    info.reticle = add(new THREE.CircleGeometry(.0006, 16), mat('reticle'), 0, sightY, oz + .001);
+    info.sight.set(0, sightY, oz + .001);
+    info.eyeRelief = .22;
   } else if (optic === 'holo') {
-    add(bgeo(0.04, 0.016, 0.07), metal, 0, railY + 0.02, oz);
-    add(bgeo(0.005, 0.04, 0.05), metal, -0.021, sightY + 0.005, oz - 0.01);
-    add(bgeo(0.005, 0.04, 0.05), metal, 0.021, sightY + 0.005, oz - 0.01);
-    add(bgeo(0.047, 0.005, 0.05), metal, 0, sightY + 0.026, oz - 0.01);
-    add(new THREE.PlaneGeometry(0.036, 0.034), mat('lens'), 0, sightY + 0.004, oz - 0.03);
-    const ret = new THREE.Group(); ret.position.set(0, sightY, oz - 0.031); root.add(ret);
-    add(new THREE.RingGeometry(0.0045, 0.0052, 24), mat('reticle'), 0, 0, 0, 0, 0, 0, ret);
-    add(new THREE.CircleGeometry(0.0007, 8), mat('reticle'), 0, 0, 0, 0, 0, 0, ret);
+    add(bgeo(0.044, 0.02, 0.06), metal, 0, railY + 0.023, oz);
+    for (const x of [-.028, .028]) add(bgeo(.006, .058, .045), metal, x, sightY, oz);
+    for (const y of [-.026, .026]) add(bgeo(.062, .006, .045), metal, 0, sightY + y, oz);
+    add(new THREE.PlaneGeometry(.05, .046), mat('lens'), 0, sightY, oz);
+    const ret = new THREE.Group(); ret.position.set(0, sightY, oz + .001); root.add(ret);
+    add(new THREE.RingGeometry(.0035, .0041, 32), mat('reticle'), 0, 0, 0, 0, 0, 0, ret);
+    add(new THREE.CircleGeometry(.0005, 12), mat('reticle'), 0, 0, 0, 0, 0, 0, ret);
     info.reticle = ret;
-    info.sight.set(0, sightY, oz + 0.12);
+    info.sight.set(0, sightY, oz + .001);
+    info.eyeRelief = .22;
   } else if (optic === 'acog' || optic === 'thermal') {
     add(bgeo(0.03, 0.02, 0.05), metal, 0, railY + 0.02, oz);
     add(cgeo(0.019, 0.019, 0.12, 16), metal, 0, sightY + 0.005, oz);

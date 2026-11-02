@@ -8,6 +8,12 @@ import { clamp, damp, lerp, rand, spreadDir, DEG } from './util.js';
 
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion();
 
+export function tunePlayerWeapon(stats) {
+  // Preserve the accepted recoil calibration without importing damage/ammo buffs.
+  stats.recoilV *= .22; stats.recoilH *= .22;
+  return stats;
+}
+
 export class WeaponSystem {
   constructor(game, owner) {
     this.game = game; this.owner = owner;
@@ -15,7 +21,7 @@ export class WeaponSystem {
     this.cur = 0;
     this.state = 'idle'; this.stateT = 0; this.stateDur = 0;
     this.adsT = 0; this.cool = 0; this.triggerHeld = false; this.cycleT = 0;
-    this.rp = 0; this.lastShot = 0; this.shotsInRow = 0;
+    this.rp = 0; this.ry = 0; this.shotAge = 1; this.shotsInRow = 0;
     this.vmKick = 0; this.vmRot = 0; this.bobPhase = 0;
     this.sway = new THREE.Vector2(); this.flashT = 0;
     this.pivot = new THREE.Group();
@@ -27,11 +33,38 @@ export class WeaponSystem {
     this.reloadStage = 0;
     this.meleeHit = false;
   }
-  dispose() { this.game.vmScene.remove(this.pivot); }
+  disposeSlot(slot) {
+    if (!slot || slot.disposed) return;
+    slot.disposed = true;
+    this.holder.remove(slot.group);
+    // Gun/arm meshes own their geometries. Sprite geometry and mat()/textures
+    // are engine-shared: do not dispose those with a single weapon slot.
+    const geometries = new Set();
+    slot.group.traverse(o => { if (o.isMesh && o.geometry) geometries.add(o.geometry); });
+    for (const geometry of geometries) geometry.dispose();
+    slot.flash?.material.dispose();
+    if (slot.laserDot) {
+      this.game.scene.remove(slot.laserDot);
+      slot.laserDot.geometry.dispose(); slot.laserDot.material.dispose();
+    }
+  }
+  dispose() {
+    for (const slot of this.slots) this.disposeSlot(slot);
+    this.slots = [];
+    this.game.vmScene.remove(this.pivot);
+  }
 
   makeSlot(cfg) {
     const stats = computeStats(cfg.id, cfg.att || {});
-    const info = buildGun(cfg.id, cfg.att || {}, cfg.camo || 'none', { noShadow: true });
+    // Player-only tuning: bot computeStats remains unchanged.
+    if (this.owner.isPlayer) tunePlayerWeapon(stats);
+    // Training optics change presentation, not the existing weapon balance.
+    const modelAtt = { ...(cfg.att || {}) };
+    if (this.owner.isPlayer && !modelAtt.optic) {
+      if (cfg.id === 'm4') modelAtt.optic = 'reddot';
+      if (cfg.id === 'm870') modelAtt.optic = 'holo';
+    }
+    const info = buildGun(cfg.id, modelAtt, cfg.camo || 'none', { noShadow: true });
     const sleeve = mat(this.game.playerSleeve || 'fab_ally');
     const arms = buildArms(info, sleeve);
     const g = new THREE.Group();
@@ -49,20 +82,20 @@ export class WeaponSystem {
     return { id: cfg.id, att: cfg.att || {}, camo: cfg.camo, stats, info, group: g, flash, mag: stats.mag, reserve: stats.reserve, laserDot };
   }
   setLoadout(list) {
-    for (const s of this.slots) { this.holder.remove(s.group); if (s.laserDot) this.game.scene.remove(s.laserDot); }
+    for (const s of this.slots) this.disposeSlot(s);
     this.slots = list.map(c => this.makeSlot(c));
     this.cur = 0;
     this.showCurrent();
-    this.state = 'switch'; this.stateT = 0; this.stateDur = 0.5;
+    this.state = 'switch'; this.stateT = 0; this.stateDur = 0.22;
   }
   replaceSlot(i, cfg, mag, reserve) {
     const old = this.slots[i];
-    if (old) { this.holder.remove(old.group); if (old.laserDot) this.game.scene.remove(old.laserDot); }
+    if (old) this.disposeSlot(old);
     const s = this.makeSlot(cfg);
     if (mag !== undefined) { s.mag = mag; s.reserve = reserve; }
     this.slots[i] = s;
     this.cur = i; this.showCurrent();
-    this.state = 'switch'; this.stateT = 0; this.stateDur = 0.45;
+    this.state = 'switch'; this.stateT = 0; this.stateDur = 0.22;
   }
   get w() { return this.slots[this.cur]; }
   showCurrent() {
@@ -92,10 +125,51 @@ export class WeaponSystem {
   }
   fullAmmo() { for (const s of this.slots) { s.mag = s.stats.mag; s.reserve = s.stats.reserve; } }
 
+  resetRecoil() {
+    this.rp = this.ry = this.vmKick = this.vmRot = this.shotsInRow = 0;
+    this.shotAge = 1;
+  }
+  consumeRecoil(axis, delta) {
+    // Counter-steering spends the current displacement. Otherwise a player
+    // could offset the cap once and hold a perfectly stable endless spray.
+    const offset = this[axis];
+    if (offset * delta >= 0) return delta;
+    const used = Math.sign(delta) * Math.min(Math.abs(delta), Math.abs(offset));
+    this[axis] += used;
+    return delta - used;
+  }
+  updateRecoil(dt) {
+    // Exponential recovery is independent of render rate and pauses with play.
+    // Keep input angles untouched: recovery must never restore an old mouse aim.
+    const hold = Math.max(0.14, 90 / this.w.stats.rpm);
+    const heldTime = Math.min(dt, Math.max(0, hold - this.shotAge));
+    this.shotAge += dt;
+    // Retain climb between automatic shots; recover quickly after the burst.
+    // Split at the deadline so a frame crossing it has the same decay integral.
+    this.rp *= Math.exp(-0.35 * heldTime - 10 * (dt - heldTime));
+    this.ry = damp(this.ry, 0, 10, dt);
+    this.vmKick = damp(this.vmKick, 0, 18, dt);
+    this.vmRot = damp(this.vmRot, 0, 14, dt);
+    if (this.shotAge > Math.max(0.18, 90 / this.w.stats.rpm)) this.shotsInRow = 0;
+  }
+  kickRecoil() {
+    const st = this.w.stats, pl = this.owner;
+    const adsMul = lerp(1, 0.75, this.adsT) * (pl.crouchT > 0.5 ? 0.85 : 1);
+    // Short bursts stay manageable; sustained fire builds more force after
+    // the first three shots, with a ceiling rather than runaway rotation.
+    const burstForce = 1 + 0.5 * clamp((this.shotsInRow - 3) / 9, 0, 1);
+    this.rp = Math.min(8 * DEG, this.rp + st.recoilV * 5.8 * DEG * adsMul * burstForce);
+    const side = Math.sin(this.shotsInRow * 0.75) * 0.65 + Math.sin(this.shotsInRow * 2.4) * 0.35;
+    this.ry = clamp(this.ry + side * st.recoilH * 3 * DEG * adsMul * burstForce, -1.1 * DEG, 1.1 * DEG);
+    this.vmKick = Math.min(0.08, this.vmKick + 0.03 + st.recoilV * 0.025);
+    this.vmRot = Math.min(0.16, this.vmRot + 0.05 + st.recoilV * 0.04);
+  }
+
   update(dt, input) {
     const game = this.game, pl = this.owner, w = this.w;
     if (!w) return;
     const st = w.stats;
+    this.updateRecoil(dt); this.owner.syncCamera();
     this.stateT += dt;
     this.cool -= dt; this.cycleT -= dt;
     const sprinting = pl.sprinting;
@@ -140,10 +214,6 @@ export class WeaponSystem {
     }
     this.triggerHeld = input.fire;
     if (w.mag === 0 && this.state === 'idle' && w.reserve > 0 && this.cool < -0.15) this.startReload();
-    // 后坐力恢复
-    if (performance.now() - this.lastShot > 120) { this.rp = damp(this.rp, 0, 4, dt); this.shotsInRow = 0; }
-    this.vmKick = damp(this.vmKick, 0, 14, dt);
-    this.vmRot = damp(this.vmRot, 0, 10, dt);
     this.flashT -= dt;
     w.flash.visible = this.flashT > 0;
     if (w.flash.visible) w.flash.material.rotation = Math.random() * 6;
@@ -177,7 +247,7 @@ export class WeaponSystem {
     w.mag--;
     this.cool = 60 / st.rpm;
     if (st.fire === 'bolt' || st.fire === 'pump') { this.cycleT = 60 / st.rpm; }
-    this.lastShot = performance.now();
+    this.shotAge = 0;
     this.shotsInRow++;
     pl.stats.shots++;
     const cam = game.camera;
@@ -185,12 +255,14 @@ export class WeaponSystem {
     const fwd = cam.getWorldDirection(new THREE.Vector3());
     const muzzleW = this.muzzleWorld(new THREE.Vector3());
     if (st.projectile === 'rocket') {
-      const p = new Projectile(game, 'rocket', origin.clone().addScaledVector(fwd, 0.8), fwd.clone().multiplyScalar(55), pl, 10);
+      const p = new Projectile(game, 'rocket', origin.clone(), fwd.clone().multiplyScalar(55), pl, 10);
       game.projectiles.push(p);
     } else {
       const spread = this.currentSpread() * DEG * 0.5;
       let anyHit = false, kill = false, head = false;
       for (let i = 0; i < st.pellets; i++) {
+        // The same recoil-bearing sight ray drives damage, impact and tracer.
+        // Target magnetism would silently erase the recoil the player must aim.
         const d = spreadDir(fwd, spread, new THREE.Vector3());
         const r = fireHitscan(game, pl, origin, d, st, st.name);
         if (r.ent) { anyHit = true; if (r.killed) kill = true; if (r.part === 'head') head = true; }
@@ -211,15 +283,7 @@ export class WeaponSystem {
     game.makeNoise(pl.pos, st.suppressed ? 12 : 70, pl.team);
     if (!st.suppressed) pl.revealT = 1.5;
     // 后坐力
-    const adsMul = lerp(1, 0.75, this.adsT) * (pl.crouchT > 0.5 ? 0.85 : 1);
-    const kick = st.recoilV * 0.55 * DEG * adsMul;
-    const side = (Math.random() - 0.4) * st.recoilH * 0.5 * DEG * adsMul;
-    pl.pitch += kick * 0.55;
-    this.rp += kick * 0.45;
-    pl.yaw -= side;
-    this.vmKick += 0.02 + st.recoilV * 0.012;
-    this.vmRot += 0.02 + st.recoilV * 0.02;
-    pl.punch(st.recoilV * 0.004);
+    this.kickRecoil();
   }
   muzzleWorld(out) {
     const w = this.w;
@@ -292,13 +356,17 @@ export class WeaponSystem {
     if (inHand) { this.state = 'idle'; }
   }
 
-  updateViewmodel(dt, input) {
-    const game = this.game, pl = this.owner, w = this.w, st = w.stats;
+  syncViewmodelCamera() {
+    const game = this.game;
     const cam = game.camera;
     this.pivot.position.copy(cam.position);
     this.pivot.quaternion.copy(cam.quaternion);
     game.vmCamera.position.copy(cam.position);
     game.vmCamera.quaternion.copy(cam.quaternion);
+  }
+  updateViewmodel(dt, input) {
+    const game = this.game, pl = this.owner, w = this.w, st = w.stats;
+    this.syncViewmodelCamera();
     // 摆动
     this.sway.x = damp(this.sway.x, clamp(-input.mdx * 0.0006, -0.05, 0.05), 8, dt);
     this.sway.y = damp(this.sway.y, clamp(input.mdy * 0.0006, -0.05, 0.05), 8, dt);
@@ -307,7 +375,7 @@ export class WeaponSystem {
     const bobAmt = Math.min(1, spd / 5) * (1 - this.adsT * 0.9);
     const a = this.adsT, ae = a * a * (3 - 2 * a);
     const hip = st.type === 'pistol' ? new THREE.Vector3(0.12, -0.13, -0.3) : st.type === 'launcher' ? new THREE.Vector3(0.15, -0.16, -0.25) : new THREE.Vector3(0.15, -0.16, -0.3);
-    const extra = st.type === 'pistol' ? 0.26 : st.type === 'launcher' ? 0.12 : w.info.optic === 'iron' ? 0.03 : 0.0;
+    const extra = w.info.eyeRelief ?? (st.type === 'pistol' ? 0.26 : st.type === 'launcher' ? 0.12 : w.info.optic === 'iron' ? 0.18 : 0.0);
     const ads = _v.set(-w.info.sight.x, -w.info.sight.y, -w.info.sight.z - extra);
     const pos = hip.clone().lerp(ads, ae);
     const bx = Math.sin(this.bobPhase) * 0.012 * bobAmt, by = -Math.abs(Math.cos(this.bobPhase)) * 0.012 * bobAmt;
@@ -351,6 +419,15 @@ export class WeaponSystem {
     if (st.fire === 'pump' && this.cycleT > 0) { const e = Math.sin((1 - this.cycleT / (60 / st.rpm)) * Math.PI); pos.z += e * 0.04; }
     this.holder.position.copy(pos);
     this.holder.rotation.set(rx, ry, rz);
+    if (w.info.reticle && w.info.eyeRelief) {
+      // Pivot gun animation around the sight axis. The dot must stay on the
+      // camera's shot ray instead of drifting away with decorative weapon sway.
+      const sight = w.info.sight.clone().applyEuler(this.holder.rotation);
+      // Recoil changes eye relief along the shot axis without moving the dot
+      // off target. Do not cancel the rearward kick when aligning the optic.
+      const aligned = new THREE.Vector3(0, 0, -w.info.eyeRelief + this.vmKick * 0.5).sub(sight);
+      this.holder.position.lerp(aligned, ae);
+    }
     // 瞄具遮罩：高倍镜隐藏模型
     const scoped = (w.info.optic === 'sniper' || w.info.optic === 'acog' || w.info.optic === 'thermal') && this.adsT > 0.85;
     this.holder.visible = !scoped;
