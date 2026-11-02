@@ -5,6 +5,8 @@ import { computeStats, WEAPONS } from './data.js';
 import { fireHitscan, Projectile } from './combat.js';
 import { clamp, damp, rand, angleDiff, raySphere, rayAABB, spreadDir, DEG, pick } from './util.js';
 
+const SOLDIER_SCALE = 1.15;
+
 const DIFF = [
   { react: 0.8, spread: 3.4, burst: [2, 4], pause: [0.6, 1.2], dmg: 0.55, view: 50, turn: 4 },
   { react: 0.5, spread: 2.2, burst: [3, 6], pause: [0.35, 0.8], dmg: 0.8, view: 65, turn: 6 },
@@ -31,6 +33,7 @@ export class Bot {
     this.yaw = o.yaw || 0; this.pitch = 0;
     this.alive = true;
     this.model = createSoldierModel(o.style || 'enemy', this.weaponId, this.att, o.camo || 'none');
+    this.model.root.scale.setScalar(SOLDIER_SCALE);
     applyFlashTex(this.model);
     this.model.root.position.copy(this.pos);
     game.scene.add(this.model.root);
@@ -54,22 +57,22 @@ export class Bot {
     this.accuracyMul = o.accuracyMul || 1;
     this.patrol = o.patrol || null; this.patrolI = 0;
     this.assaultTarget = o.assaultTarget || null;
-    this.radius = 0.35 * SOLDIER_BODY_WIDTH;
+    this.radius = 0.35 * SOLDIER_BODY_WIDTH * SOLDIER_SCALE;
     this.dmgTaken = new Map();
   }
   get crouch() { return this.anim.crouch; }
-  eyePos(out) { return out.set(this.pos.x, this.pos.y + 1.6 - this.anim.crouch * 0.5, this.pos.z); }
-  chestPos(out) { return out.set(this.pos.x, this.pos.y + 1.2 - this.anim.crouch * 0.4, this.pos.z); }
+  eyePos(out) { return out.set(this.pos.x, this.pos.y + (1.6 - this.anim.crouch * 0.5) * SOLDIER_SCALE, this.pos.z); }
+  chestPos(out) { return out.set(this.pos.x, this.pos.y + (1.2 - this.anim.crouch * 0.4) * SOLDIER_SCALE, this.pos.z); }
   forward(out) { return out.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw)); }
   hitTest(o, d, maxT) {
     if (!this.alive) return null;
     const c = this.anim.crouch;
-    const hy = this.pos.y + 1.68 - c * 0.5;
-    let t = raySphere(o.x, o.y, o.z, d.x, d.y, d.z, this.pos.x, hy, this.pos.z, 0.15);
+    const hy = this.pos.y + (1.68 - c * 0.5) * SOLDIER_SCALE;
+    let t = raySphere(o.x, o.y, o.z, d.x, d.y, d.z, this.pos.x, hy, this.pos.z, 0.15 * SOLDIER_SCALE);
     if (t >= 0 && t < maxT) return { t, part: 'head' };
-    const lt = 0.9 - c * 0.35;
-    const bodyRadius = 0.27 * SOLDIER_BODY_WIDTH, legRadius = 0.2 * SOLDIER_BODY_WIDTH;
-    const b = { x0: this.pos.x - bodyRadius, x1: this.pos.x + bodyRadius, y0: this.pos.y + lt, y1: hy - 0.13, z0: this.pos.z - bodyRadius, z1: this.pos.z + bodyRadius };
+    const lt = (0.9 - c * 0.35) * SOLDIER_SCALE;
+    const bodyRadius = 0.27 * SOLDIER_BODY_WIDTH * SOLDIER_SCALE, legRadius = 0.2 * SOLDIER_BODY_WIDTH * SOLDIER_SCALE;
+    const b = { x0: this.pos.x - bodyRadius, x1: this.pos.x + bodyRadius, y0: this.pos.y + lt, y1: hy - 0.13 * SOLDIER_SCALE, z0: this.pos.z - bodyRadius, z1: this.pos.z + bodyRadius };
     t = rayAABB(o.x, o.y, o.z, d.x, d.y, d.z, b, maxT);
     if (t >= 0) return { t, part: 'body' };
     const l = { x0: this.pos.x - legRadius, x1: this.pos.x + legRadius, y0: this.pos.y, y1: this.pos.y + lt, z0: this.pos.z - legRadius, z1: this.pos.z + legRadius };
@@ -304,7 +307,7 @@ export class Bot {
     this.vel.x += (desired.x - this.vel.x) * k;
     this.vel.z += (desired.z - this.vel.z) * k;
     this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
-    game.world.collide(this.pos, this.vel, this.radius, 1.7);
+    game.world.collide(this.pos, this.vel, this.radius, 1.7 * SOLDIER_SCALE);
     const gh = game.world.groundHeight(this.pos.x, this.pos.z, this.pos.y, this.radius);
     if (this.static) { /* 固定位置（塔楼） */ }
     else this.pos.y = damp(this.pos.y, gh, 15, dt);
