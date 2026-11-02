@@ -477,7 +477,7 @@ export class Menu {
       <div class="settings">
         <div class="hdr" style="margin-bottom:20px">设置<small>画面 · 操作 · 音频</small></div>
         <div class="set-row"><span>画面质量</span><div class="seg" data-q="1">${['low', 'medium', 'high'].map((q, i) => `<div data-v="${q}" class="${S.quality === q ? 'sel' : ''}">${['低', '中', '高'][i]}</div>`).join('')}</div></div>
-        ${rng('fov', '视野 (FOV)', 65, 100, 1, fmts.fov)}
+        ${rng('fov', '垂直视野（越小目标越大）', 65, 100, 1, fmts.fov)}
         ${sensitivity('sens', '鼠标灵敏度', 20)}
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">${[1, 2, 3, 5, 8, 12].map(v => `<button class="btn ghost small" data-sens="${v}">灵敏度 ${v}</button>`).join('')}<button class="btn ghost small" data-a="reset-sens">恢复原版灵敏度</button></div>
         <div style="font-size:12px;color:#aaa;line-height:1.8">滑动或直接输入，自动保存，无需刷新。灵敏度 0.1–20，统一控制普通视角和开镜；开镜后按瞄准镜倍率自动减速。</div>

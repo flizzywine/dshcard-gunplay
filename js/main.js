@@ -54,10 +54,10 @@ const GradeShader = {
 
 class Game {
   constructor() {
-    this.settings = Object.assign({ sens: 1.0, fov: 78, quality: 'high', volume: .8, voice: false, invertY: false, showFps: true }, JSON.parse(localStorage.getItem('mf_settings') || '{}'));
+    this.settings = Object.assign({ sens: 1.0, fov: 70, quality: 'high', volume: .8, voice: false, invertY: false, showFps: true }, JSON.parse(localStorage.getItem('mf_settings') || '{}'));
     // One-time restoration also replaces the previously saved high sensitivity.
     if (!this.settings.originalControlsV1) {
-      Object.assign(this.settings, { sens: 1, fov: 78, invertY: false, voice: false, originalControlsV1: true });
+      Object.assign(this.settings, { sens: 1, fov: 70, invertY: false, voice: false, originalControlsV1: true });
       delete this.settings.aimMode;
       delete this.settings.gunplayV1;
       this.saveSettings();
@@ -70,6 +70,12 @@ class Game {
     // One sensitivity control; discard the obsolete per-user ADS multiplier.
     if ('adsSens' in this.settings) {
       delete this.settings.adsSens;
+      this.saveSettings();
+    }
+    // Narrow only the former default; preserve explicitly tuned fields of view.
+    if (!this.settings.readableFovV1) {
+      if (this.settings.fov === 78) this.settings.fov = 70;
+      this.settings.readableFovV1 = true;
       this.saveSettings();
     }
     this.profile = Object.assign({ xp: 0, classes: JSON.parse(JSON.stringify(DEFAULT_CLASSES)), streaks: [...DEFAULT_STREAKS], selClass: 0 }, JSON.parse(localStorage.getItem('mf_profile') || '{}'));

@@ -131,10 +131,10 @@ export class Player {
     }
     this.crouchT = damp(this.crouchT, this.crouching ? 1 : 0, 12, dt);
     const mob = ws.w ? ws.w.stats.mobility : 1;
-    let speed = 4.7 * mob;
-    if (this.sprinting) speed = 7.1 * mob * (this.hasPerk('doubletime') ? 1.08 : 1);
-    else if (this.crouchT > 0.5) speed = 2.4 * (this.hasPerk('doubletime') ? 1.3 : 1);
-    speed *= lerp(1, 0.55, ws.adsT);
+    let speed = 5.6 * mob;
+    if (this.sprinting) speed = 8.5 * mob * (this.hasPerk('doubletime') ? 1.08 : 1);
+    else if (this.crouchT > 0.5) speed = 2.8 * (this.hasPerk('doubletime') ? 1.3 : 1);
+    speed *= lerp(1, 0.65, ws.adsT);
     if (this.stunT > 0) { this.stunT -= dt; speed *= 0.5; }
     const sy = Math.sin(this.yaw), cy = Math.cos(this.yaw);
     let wx = fx * cy - fz * sy, wz = -fx * sy - fz * cy;
