@@ -46,5 +46,5 @@ aimed.w.update(.02, { fire: true, ads: true });
 assert.equal(hits, 0, 'a nearby enemy must not pull an off-target shot away from the sight ray');
 assert.equal(aimed.impacts.length, 1, 'off-target shot reaches the wall');
 assert(Math.abs(aimed.impacts[0].x) < 1e-8);
-assert(climb > 1.2 && climb < 1.7, `20m wall burst must visibly climb but remain controllable; got ${climb}m`);
+assert(climb > 2.2 && climb < 3, `20m wall burst must visibly climb but remain controllable; got ${climb}m`);
 console.log(`PASS actual recoil ballistics: burst climbs ${climb.toFixed(3)}m at 20m, recovery, no bullet magnetism.`);

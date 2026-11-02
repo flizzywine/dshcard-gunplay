@@ -139,6 +139,15 @@ export class WeaponSystem {
     this.rp = this.ry = this.vmKick = this.vmRot = this.shotsInRow = 0;
     this.shotAge = 1;
   }
+  consumeRecoil(axis, delta) {
+    // Counter-steering spends the current displacement. Otherwise a player
+    // could offset the cap once and hold a perfectly stable endless spray.
+    const offset = this[axis];
+    if (offset * delta >= 0) return delta;
+    const used = Math.sign(delta) * Math.min(Math.abs(delta), Math.abs(offset));
+    this[axis] += used;
+    return delta - used;
+  }
   updateRecoil(dt) {
     // Exponential recovery is independent of render rate and pauses with play.
     // Keep input angles untouched: recovery must never restore an old mouse aim.
@@ -147,7 +156,7 @@ export class WeaponSystem {
     this.shotAge += dt;
     // Retain climb between automatic shots; recover quickly after the burst.
     // Split at the deadline so a frame crossing it has the same decay integral.
-    this.rp *= Math.exp(-0.65 * heldTime - 10 * (dt - heldTime));
+    this.rp *= Math.exp(-0.35 * heldTime - 10 * (dt - heldTime));
     this.ry = damp(this.ry, 0, 10, dt);
     this.vmKick = damp(this.vmKick, 0, 18, dt);
     this.vmRot = damp(this.vmRot, 0, 14, dt);
@@ -158,10 +167,10 @@ export class WeaponSystem {
     const adsMul = lerp(1, 0.75, this.adsT) * (pl.crouchT > 0.5 ? 0.85 : 1);
     // Short bursts stay manageable; sustained fire builds more force after
     // the first three shots, with a ceiling rather than runaway rotation.
-    const burstForce = 1 + 0.3 * clamp((this.shotsInRow - 3) / 9, 0, 1);
-    this.rp = Math.min(4.5 * DEG, this.rp + st.recoilV * 3.2 * DEG * adsMul * burstForce);
+    const burstForce = 1 + 0.5 * clamp((this.shotsInRow - 3) / 9, 0, 1);
+    this.rp = Math.min(8 * DEG, this.rp + st.recoilV * 5.8 * DEG * adsMul * burstForce);
     const side = Math.sin(this.shotsInRow * 0.75) * 0.65 + Math.sin(this.shotsInRow * 2.4) * 0.35;
-    this.ry = clamp(this.ry + side * st.recoilH * 1.8 * DEG * adsMul * burstForce, -0.55 * DEG, 0.55 * DEG);
+    this.ry = clamp(this.ry + side * st.recoilH * 3 * DEG * adsMul * burstForce, -1.1 * DEG, 1.1 * DEG);
     this.vmKick = Math.min(0.08, this.vmKick + 0.03 + st.recoilV * 0.025);
     this.vmRot = Math.min(0.16, this.vmRot + 0.05 + st.recoilV * 0.04);
   }
