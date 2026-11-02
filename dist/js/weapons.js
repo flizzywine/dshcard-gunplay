@@ -156,9 +156,12 @@ export class WeaponSystem {
   kickRecoil() {
     const st = this.w.stats, pl = this.owner;
     const adsMul = lerp(1, 0.75, this.adsT) * (pl.crouchT > 0.5 ? 0.85 : 1);
-    // Small bounded aim displacement, stronger independent weapon animation.
-    this.rp = Math.min(2 * DEG, this.rp + st.recoilV * 1.8 * DEG * adsMul);
-    this.ry = clamp(this.ry + Math.sin(this.shotsInRow * 2.4) * st.recoilH * 0.45 * DEG * adsMul, -0.22 * DEG, 0.22 * DEG);
+    // Short bursts stay manageable; sustained fire builds more force after
+    // the first three shots, with a ceiling rather than runaway rotation.
+    const burstForce = 1 + 0.3 * clamp((this.shotsInRow - 3) / 9, 0, 1);
+    this.rp = Math.min(4.5 * DEG, this.rp + st.recoilV * 3.2 * DEG * adsMul * burstForce);
+    const side = Math.sin(this.shotsInRow * 0.75) * 0.65 + Math.sin(this.shotsInRow * 2.4) * 0.35;
+    this.ry = clamp(this.ry + side * st.recoilH * 1.8 * DEG * adsMul * burstForce, -0.55 * DEG, 0.55 * DEG);
     this.vmKick = Math.min(0.08, this.vmKick + 0.03 + st.recoilV * 0.025);
     this.vmRot = Math.min(0.16, this.vmRot + 0.05 + st.recoilV * 0.04);
   }
