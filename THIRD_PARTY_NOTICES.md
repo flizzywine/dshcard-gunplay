@@ -6,6 +6,10 @@ Original package metadata is retained in upstream-package.json. It declares ISC 
 
 Three.js r169 is vendored locally, including addons. Its exact MIT notice retrieved from the official r169 LICENSE is retained at dist/lib/LICENSE.three.txt.
 
+## Voxel battlefield prototype
+
+`dist/js/voxel/terrain.js` adapts the block records and material-grouped `InstancedMesh` / `buildBlock` approach from https://github.com/vyse12138/minecraft-threejs at commit `ead87efbd95eb2092a1b341b7c3cc6c78187904d`, specifically `src/terrain/index.ts` and `src/terrain/mesh/block.ts`. Copyright (c) 2022 Vyse12138; the full MIT notice is retained at `dist/lib/LICENSE.minecraft-threejs.txt`. The adaptation uses finite dirty chunks and one occupancy map for existing gunplay collision, raycasts and ground navigation. It is not a wholesale port of the upstream game. No upstream music, textures, fonts or logos are copied; this prototype uses colored geometry and the existing procedural gunplay assets.
+
 Original project README states models, textures and audio are procedural. Source inspection supports this architecture; it is not an exhaustive third-party rights audit.
 
 Changes: private quick-play rules, easy opponent-only AI, stronger player weapons/health, visible-target aim assistance, pixel rendering/materials, simplified Chinese menu/HUD, pause/replay robustness, and safe tests. No contact with upstream author, no public upstream repository or pull request.

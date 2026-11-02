@@ -210,7 +210,7 @@ export class HUD {
     const command = $('commandPanel');
     if (command) {
       const active = g.bots.filter(b => b.team === p.team && b.command && b.command.expiresAt > g.time);
-      command.innerHTML = `<b>指挥 · ${g.commandScope === 'all' ? '全队 9 人' : '先锋 3 人'} <small>[T] 切换</small></b><div>5 跟随　6 进攻　7 守点　8 集火</div><small>${active.length ? active.length + ' 人执行指令 · 35 秒后恢复推进' : '队友自主推进 · 准星指向位置/敌人下令'}</small>`;
+      command.innerHTML = `<b>指挥 · ${g.voxelLab ? '先锋 1 人' : g.commandScope === 'all' ? '全队 9 人' : '先锋 3 人'} <small>[T] 切换</small></b><div>5 跟随　6 进攻　7 守点　8 集火</div><small>${active.length ? active.length + ' 人执行指令 · 35 秒后恢复推进' : '队友自主推进 · 准星指向位置/敌人下令'}</small>`;
     }
     const cockpit = $('mechCockpit');
     if (cockpit) { cockpit.classList.toggle('hidden', !g.abilities?.mounted); cockpit.innerHTML = g.abilities?.mounted ? '<div class="cockpit-top">手动驾驶 / 重机炮上线</div><i class="cockpit-left"></i><i class="cockpit-right"></i>' : ''; }
