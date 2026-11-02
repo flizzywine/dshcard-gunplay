@@ -176,16 +176,18 @@ html, body { position: fixed; inset: 0; }
 #hitmarker i:nth-child(3) { transform: translate(-8px,4px) rotate(45deg); }
 #hitmarker i:nth-child(4) { transform: translate(6px,4px) rotate(-45deg); }
 #hitmarker.kill i { background: #ff3b30; }
-#scope { position: absolute; inset: 0; }
-.scope-hole { position: absolute; left: 50%; top: 50%; width: 88vh; height: 88vh; transform: translate(-50%,-50%); border-radius: 50%; box-shadow: 0 0 0 200vmax #000, inset 0 0 60px 30px rgba(0,0,0,.9); }
-.scope-h { position: absolute; left: calc(50% - 44vh); width: 88vh; top: 50%; height: 1px; background: #000; }
-.scope-v { position: absolute; top: 6vh; height: 88vh; left: 50%; width: 1px; background: #000; }
+#scope { position: absolute; inset: 0; --scope-size: 78vmin; }
+.scope-hole { position: absolute; left: 50%; top: 50%; width: var(--scope-size); height: var(--scope-size); transform: translate(-50%,-50%); border-radius: 50%; border: 9px solid #26302d; box-shadow: 0 0 0 200vmax #080b0a, 0 0 0 13px #111915, inset 0 0 24px 9px rgba(0,0,0,.65); }
+.scope-h { position: absolute; left: 50%; transform: translateX(-50%); width: var(--scope-size); top: 50%; height: 1px; background: #111; }
+.scope-v { position: absolute; top: 50%; transform: translateY(-50%); height: var(--scope-size); left: 50%; width: 1px; background: #111; }
+.scope-reticle { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: var(--scope-size); height: var(--scope-size); fill: none; stroke: #111; stroke-width: .45; }
+.scope-zoom { position: absolute; left: 50%; top: calc(50% + 28vmin); transform: translateX(-50%); color: #e4ece0; font: 12px monospace; text-shadow: 0 1px 3px #000; }
 .scope-dot { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; background: #f22; border-radius: 50%; }
-#scope.acog .scope-hole { width: 70vh; height: 70vh; box-shadow: 0 0 0 200vmax #060606, inset 0 0 50px 25px rgba(0,0,0,.95); }
-#scope.acog .scope-h, #scope.acog .scope-v { display: none; }
+#scope.acog .scope-hole { box-shadow: 0 0 0 200vmax #060606, inset 0 0 50px 25px rgba(0,0,0,.95); }
+#scope.acog .scope-h, #scope.acog .scope-v, #scope.acog .scope-reticle { display: none; }
 #scope.acog .scope-dot { width: 0; height: 0; background: none; border-left: 7px solid transparent; border-right: 7px solid transparent; border-bottom: 12px solid #ff4020; margin: 0 -7px; border-radius: 0; filter: drop-shadow(0 0 3px #f40); }
-#scope.thermal .scope-hole { width: 72vh; height: 72vh; }
 #scope.thermal .scope-h, #scope.thermal .scope-v { background: rgba(255,255,255,.6); }
+#scope.thermal .scope-reticle { stroke: rgba(255,255,255,.6); }
 #nvgFrame { position: absolute; inset: 0; box-shadow: inset 0 0 20vh 8vh rgba(0,0,0,.95); border-radius: 30%; }
 #dmgDirs { position: absolute; left: 50%; top: 50%; }
 .dmgdir { position: absolute; width: 160px; height: 160px; left: -80px; top: -80px; }

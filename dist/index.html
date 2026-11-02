@@ -28,7 +28,10 @@
 <div id="hud" class="hidden">
   <div id="vignette"></div>
   <div id="nvgFrame" class="hidden"></div>
-  <div id="scope" class="hidden"><div class="scope-hole"></div><div class="scope-h"></div><div class="scope-v"></div><div class="scope-dot"></div></div>
+  <div id="scope" class="hidden"><div class="scope-hole"></div><div class="scope-h"></div><div class="scope-v"></div><div class="scope-dot"></div>
+    <svg class="scope-reticle" viewBox="-100 -100 200 200" aria-hidden="true"><path d="M-60 -2v4 M-40 -2v4 M-20 -2v4 M20 -2v4 M40 -2v4 M60 -2v4 M-2 -60h4 M-2 -40h4 M-2 -20h4 M-2 20h4 M-3 40h6 M-4 60h8"/></svg>
+    <span id="scopeZoom" class="scope-zoom"></span>
+  </div>
   <div id="crosshair"><i class="ct"></i><i class="cb"></i><i class="cl"></i><i class="cr"></i></div>
   <div id="hitmarker"><i></i><i></i><i></i><i></i></div>
   <div id="dmgDirs"></div>

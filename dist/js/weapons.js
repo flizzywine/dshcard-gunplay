@@ -67,7 +67,13 @@ export class WeaponSystem {
     const stats = computeStats(cfg.id, cfg.att || {});
     // Player-only tuning: bot computeStats remains unchanged.
     if (this.owner.isPlayer) tunePlayerWeapon(stats);
-    const info = buildGun(cfg.id, cfg.att || {}, cfg.camo || 'none', { noShadow: true });
+    // Training optics change presentation, not the existing weapon balance.
+    const modelAtt = { ...(cfg.att || {}) };
+    if (this.owner.isPlayer && !modelAtt.optic) {
+      if (cfg.id === 'm4') modelAtt.optic = 'reddot';
+      if (cfg.id === 'm870') modelAtt.optic = 'holo';
+    }
+    const info = buildGun(cfg.id, modelAtt, cfg.camo || 'none', { noShadow: true });
     const sleeve = mat(this.game.playerSleeve || 'fab_ally');
     const arms = buildArms(info, sleeve);
     const g = new THREE.Group();
@@ -326,7 +332,7 @@ export class WeaponSystem {
     const bobAmt = Math.min(1, spd / 5) * (1 - this.adsT * 0.9);
     const a = this.adsT, ae = a * a * (3 - 2 * a);
     const hip = st.type === 'pistol' ? new THREE.Vector3(0.12, -0.13, -0.3) : st.type === 'launcher' ? new THREE.Vector3(0.15, -0.16, -0.25) : new THREE.Vector3(0.15, -0.16, -0.3);
-    const extra = st.type === 'pistol' ? 0.26 : st.type === 'launcher' ? 0.12 : w.info.optic === 'iron' ? 0.03 : 0.0;
+    const extra = w.info.eyeRelief ?? (st.type === 'pistol' ? 0.26 : st.type === 'launcher' ? 0.12 : w.info.optic === 'iron' ? 0.18 : 0.0);
     const ads = _v.set(-w.info.sight.x, -w.info.sight.y, -w.info.sight.z - extra);
     const pos = hip.clone().lerp(ads, ae);
     const bx = Math.sin(this.bobPhase) * 0.012 * bobAmt, by = -Math.abs(Math.cos(this.bobPhase)) * 0.012 * bobAmt;
@@ -370,6 +376,13 @@ export class WeaponSystem {
     if (st.fire === 'pump' && this.cycleT > 0) { const e = Math.sin((1 - this.cycleT / (60 / st.rpm)) * Math.PI); pos.z += e * 0.04; }
     this.holder.position.copy(pos);
     this.holder.rotation.set(rx, ry, rz);
+    if (w.info.reticle && w.info.eyeRelief) {
+      // Pivot gun animation around the sight axis. The dot must stay on the
+      // camera's shot ray instead of drifting away with decorative weapon sway.
+      const sight = w.info.sight.clone().applyEuler(this.holder.rotation);
+      const aligned = new THREE.Vector3(0, 0, -w.info.eyeRelief).sub(sight);
+      this.holder.position.lerp(aligned, ae);
+    }
     // 瞄具遮罩：高倍镜隐藏模型
     const scoped = (w.info.optic === 'sniper' || w.info.optic === 'acog' || w.info.optic === 'thermal') && this.adsT > 0.85;
     this.holder.visible = !scoped;

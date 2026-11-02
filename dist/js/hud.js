@@ -133,6 +133,7 @@ export class HUD {
     const sc = $('scope');
     if (scoped) { sc.classList.remove('hidden'); sc.className = scoped === 'sniper' ? '' : scoped; }
     else sc.classList.add('hidden');
+    if (scoped) $('scopeZoom').textContent = (w?.stats.zoom || 1).toFixed(1) + '×';
     // 命中
     if (this.hitT > 0) { this.hitT -= dt; if (this.hitT <= 0) $('hitmarker').style.opacity = 0; }
     // 闪光
