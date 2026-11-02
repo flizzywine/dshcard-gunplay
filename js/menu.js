@@ -470,6 +470,7 @@ export class Menu {
     const inGame = from === 'pause';
     if (!inGame) this.setCam('lobby');
     const rng = (k, label, min, max, step, fmt = v => v) => `<div class="set-row"><span>${label}</span><div style="display:flex;align-items:center;gap:12px"><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${S[k]}"><span class="val" data-v="${k}">${fmt(S[k])}</span></div></div>`;
+    const sensitivity = (k, label, max) => `<div class="set-row"><span>${label}</span><div style="display:flex;align-items:center;gap:12px"><input aria-label="${label}滑块" type="range" data-k="${k}" min="0.1" max="${max}" step="0.01" value="${S[k]}"><input aria-label="${label}数值" type="number" data-number="${k}" min="0.1" max="${max}" step="0.01" value="${S[k]}" style="width:84px;padding:8px;background:#171c20;color:#fff;border:1px solid #59636c"></div></div>`;
     const tog = (k, label) => `<div class="set-row"><span>${label}</span><div class="seg" data-t="${k}"><div data-v="1" class="${S[k] ? 'sel' : ''}">开</div><div data-v="0" class="${!S[k] ? 'sel' : ''}">关</div></div></div>`;
     const fmts = { sens: v => (+v).toFixed(2), adsSens: v => (+v).toFixed(2), fov: v => v, volume: v => Math.round(v * 100) };
     const r = this.render(`
@@ -477,8 +478,11 @@ export class Menu {
         <div class="hdr" style="margin-bottom:20px">设置<small>画面 · 操作 · 音频</small></div>
         <div class="set-row"><span>画面质量</span><div class="seg" data-q="1">${['low', 'medium', 'high'].map((q, i) => `<div data-v="${q}" class="${S.quality === q ? 'sel' : ''}">${['低', '中', '高'][i]}</div>`).join('')}</div></div>
         ${rng('fov', '视野 (FOV)', 65, 100, 1, fmts.fov)}
-        ${rng('sens', '鼠标灵敏度', 0.2, 3, 0.05, fmts.sens)}
-        ${rng('adsSens', '开镜灵敏度倍率', 0.3, 1.5, 0.05, fmts.adsSens)}
+        ${sensitivity('sens', '鼠标灵敏度', 20)}
+        ${sensitivity('adsSens', '开镜灵敏度倍率', 5)}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">${[1, 2, 3, 5, 8, 12].map(v => `<button class="btn ghost small" data-sens="${v}">灵敏度 ${v}</button>`).join('')}<button class="btn ghost small" data-a="reset-sens">恢复原版灵敏度</button></div>
+        <div style="font-size:12px;color:#aaa;line-height:1.8">滑动或直接输入，自动保存，无需刷新。普通灵敏度 0.1–20；开镜倍率 0.1–5，作用于普通灵敏度，高倍镜仍有额外减速。</div>
+        ${inGame ? '<button class="btn" data-a="test-sens" style="margin:12px 0">返回对局试手感</button>' : ''}
         ${rng('volume', '主音量', 0, 1, 0.01, fmts.volume)}
         ${tog('invertY', '反转 Y 轴')}
         ${tog('voice', '语音播报')}
@@ -497,10 +501,30 @@ export class Menu {
       </div>`, inGame ? 'solid' : 'dim', 'settings');
     r.querySelectorAll('input[type=range]').forEach(inp => inp.addEventListener('input', () => {
       const k = inp.dataset.k; S[k] = +inp.value;
-      r.querySelector(`[data-v="${k}"]`).textContent = fmts[k](S[k]);
+      const label = r.querySelector(`[data-v="${k}"]`);
+      if (label) label.textContent = fmts[k](S[k]);
+      const number = r.querySelector(`[data-number="${k}"]`);
+      if (number) number.value = S[k];
       if (k === 'volume') this.game.audio.setVolume(S[k]);
       this.game.saveSettings();
     }));
+    const setSensitivity = (k, value) => {
+      const slider = r.querySelector(`input[data-k="${k}"]`);
+      if (!Number.isFinite(value)) return;
+      S[k] = Math.round(Math.max(+slider.min, Math.min(+slider.max, value)) * 100) / 100;
+      slider.value = S[k];
+      r.querySelector(`[data-number="${k}"]`).value = S[k];
+      this.game.saveSettings();
+    };
+    r.querySelectorAll('[data-number]').forEach(inp => {
+      inp.addEventListener('input', () => {
+        if (inp.value !== '' && inp.validity.valid) setSensitivity(inp.dataset.number, inp.valueAsNumber);
+      });
+      inp.addEventListener('change', () => setSensitivity(inp.dataset.number, Number.isFinite(inp.valueAsNumber) ? inp.valueAsNumber : S[inp.dataset.number]));
+    });
+    this.on(r, '[data-sens]', el => setSensitivity('sens', +el.dataset.sens));
+    this.on(r, '[data-a=reset-sens]', () => { setSensitivity('sens', 1); setSensitivity('adsSens', .9); });
+    this.on(r, '[data-a=test-sens]', () => this.resume());
     r.querySelectorAll('.seg[data-t]').forEach(sg => sg.querySelectorAll('div').forEach(d => d.addEventListener('click', () => {
       const k = sg.dataset.t; S[k] = d.dataset.v === '1';
       sg.querySelectorAll('div').forEach(x => x.classList.toggle('sel', x === d));
