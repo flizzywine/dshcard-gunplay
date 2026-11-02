@@ -13,7 +13,7 @@
 游戏使用 ES Module，必须通过本地 HTTP 服务器打开，直接双击 html 文件打不开：
 
 ```bash
-cd pixel-gunplay
+cd dshcard-gunplay
 python3 -m http.server 8080
 # 然后在浏览器打开 http://localhost:8080
 ```
