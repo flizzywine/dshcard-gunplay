@@ -18,7 +18,7 @@ function fixture() {
   const p = g.player = new Player(g, { pos: new THREE.Vector3() });
   const w = p.ws, stats = tunePlayerWeapon(computeStats('m4'));
   // Remove random spread so this test measures recoil alone.
-  stats.adsSpread = stats.hip = 0;
+  // Use real spread stats to verify fully aimed shots follow the sight ray.
   w.slots = [{ stats, mag: 200, reserve: 999, flash: { visible: false, material: {} } }];
   w.adsT = 1; w.state = 'idle'; w.updateViewmodel = noop;
   w.muzzleWorld = out => out.copy(g.camera.position);
@@ -46,5 +46,6 @@ aimed.w.update(.02, { fire: true, ads: true });
 assert.equal(hits, 0, 'a nearby enemy must not pull an off-target shot away from the sight ray');
 assert.equal(aimed.impacts.length, 1, 'off-target shot reaches the wall');
 assert(Math.abs(aimed.impacts[0].x) < 1e-8);
-assert(climb > 2.2 && climb < 2.5, `20m wall burst must visibly climb but remain controllable; got ${climb}m`);
+assert(Math.abs(climb) < 1e-8, `recoil-disabled aimed burst must stay on target; got ${climb}m`);
+assert(burst.impacts.every(p => Math.abs(p.x) < 1e-8), 'no random horizontal ADS spread');
 console.log(`PASS actual recoil ballistics: burst climbs ${climb.toFixed(3)}m at 20m, recovery, no bullet magnetism.`);

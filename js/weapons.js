@@ -154,16 +154,9 @@ export class WeaponSystem {
     if (this.shotAge > Math.max(0.18, 90 / this.w.stats.rpm)) this.shotsInRow = 0;
   }
   kickRecoil() {
-    const st = this.w.stats, pl = this.owner;
-    const adsMul = lerp(1, 0.75, this.adsT) * (pl.crouchT > 0.5 ? 0.85 : 1);
-    // Short bursts stay manageable; sustained fire builds more force after
-    // the first three shots, with a ceiling rather than runaway rotation.
-    const burstForce = 1 + 0.5 * clamp((this.shotsInRow - 3) / 9, 0, 1);
-    this.rp = Math.min(6.8 * DEG, this.rp + st.recoilV * 4.93 * DEG * adsMul * burstForce);
-    const side = Math.sin(this.shotsInRow * 0.75) * 0.65 + Math.sin(this.shotsInRow * 2.4) * 0.35;
-    this.ry = clamp(this.ry + side * st.recoilH * 2.55 * DEG * adsMul * burstForce, -0.935 * DEG, 0.935 * DEG);
-    this.vmKick = Math.min(0.08, this.vmKick + 0.03 + st.recoilV * 0.025);
-    this.vmRot = Math.min(0.16, this.vmRot + 0.05 + st.recoilV * 0.04);
+    // Recoil disabled for the current aiming calibration: neither the camera
+    // nor the weapon model receives a firing impulse.
+    this.rp = this.ry = this.vmKick = this.vmRot = 0;
   }
 
   update(dt, input) {
@@ -236,6 +229,7 @@ export class WeaponSystem {
 
   currentSpread() {
     const pl = this.owner, st = this.w.stats;
+    if (this.adsT >= .99 && st.pellets === 1) return 0;
     const spd = Math.hypot(pl.vel.x, pl.vel.z);
     let hip = st.hip * (1 + spd / 6 * 0.6) * (pl.onGround ? 1 : 2.2) * (pl.crouchT > 0.5 ? 0.8 : 1);
     hip *= 1 + Math.min(this.shotsInRow, 10) * 0.03;

@@ -1,54 +1,18 @@
 import assert from 'node:assert/strict';
 import { WeaponSystem, tunePlayerWeapon } from '../js/weapons.js';
 import { computeStats } from '../js/data.js';
-const DEG = Math.PI / 180;
-function make(id = 'm4') {
+for (const id of ['m4', 'm870', 'l115']) {
   const ws = Object.create(WeaponSystem.prototype);
   Object.assign(ws, { slots: [{ stats: tunePlayerWeapon(computeStats(id)) }], cur: 0,
-    owner: { pitch: 0.2, yaw: -0.3, crouchT: 0 }, adsT: 1 });
+    owner: { pitch: .2, yaw: -.3, crouchT: 0, vel: { x: 4, z: 0 }, onGround: true }, adsT: 1 });
   ws.resetRecoil();
-  return ws;
+  for (let i = 0; i < 100; i++) { ws.shotsInRow++; ws.kickRecoil(); ws.updateRecoil(1 / 60); }
+  assert.equal(ws.rp, 0); assert.equal(ws.ry, 0);
+  assert.equal(ws.vmKick, 0); assert.equal(ws.vmRot, 0);
+  assert.equal(ws.owner.pitch, .2); assert.equal(ws.owner.yaw, -.3);
+  assert.equal(ws.consumeRecoil('rp', -.02), -.02, 'mouse input is not spent on recoil');
+  if (id === 'm870') assert(ws.currentSpread() > 0, 'shotgun retains pellet spread');
+  else assert.equal(ws.currentSpread(), 0, 'fully aimed single projectile stays precise even while moving');
+  ws.adsT = 0; assert(ws.currentSpread() > 0, 'hip fire retains spread');
 }
-function shot(ws) { ws.shotAge = 0; ws.shotsInRow++; ws.kickRecoil(); }
-const ws = make();
-for (let i = 0; i < 500; i++) shot(ws);
-assert(ws.rp > 0 && ws.rp <= 6.8 * DEG, 'sustained fire must have a bounded upward displacement');
-assert(Math.abs(ws.ry) <= .935 * DEG, 'horizontal displacement stays controllable');
-assert(ws.vmKick <= 0.08 && ws.vmRot <= 0.16, 'gun cannot accumulate unbounded movement');
-assert.deepEqual(ws.owner, { pitch: .2, yaw: -.3, crouchT: 0 }, 'fire preserves mouse aim');
-const paused = ws.rp; ws.updateRecoil(0); assert.equal(ws.rp, paused, 'pause does not recover recoil');
-ws.owner.pitch = -.4; ws.owner.yaw = .8;
-for (let i = 0; i < 60; i++) ws.updateRecoil(1 / 60);
-assert(ws.rp < .002 * DEG && Math.abs(ws.ry) < .001 * DEG, 'recoil recovers after release');
-assert.equal(ws.owner.pitch, -.4); assert.equal(ws.owner.yaw, .8, 'recovery preserves new aim');
-assert.equal(ws.shotsInRow, 0);
-const results = [30, 60, 120].map(fps => {
-  const r = make();
-  // Identical timed bursts at all tested frame rates.
-  for (let frame = 0; frame < fps; frame++) {
-    r.updateRecoil(1 / fps);
-    if (frame % (fps / 10) === 0) shot(r);
-  }
-  // Include the remaining interval to the same end time after the final shot.
-  r.updateRecoil(1 / fps);
-  return r.rp;
-});
-assert(Math.max(...results) - Math.min(...results) < 1e-12, 'recovery matches across frame rates');
-const rifle = make(), shotgun = make('m870'), sniper = make('l115');
-[rifle, shotgun, sniper].forEach(shot);
-assert(shotgun.rp > rifle.rp && sniper.rp > rifle.rp, 'heavy weapons give stronger feedback');
-assert(rifle.vmKick > 0.03, 'rifle has visible rearward motion');
-// Counter-steering preserves exact mouse displacement while reopening room
-// for the next shot, even after the player has reached the sustained-fire cap.
-const before = ws.rp;
-const baselineDelta = ws.consumeRecoil('rp', -2 * DEG);
-assert(Math.abs(ws.rp + baselineDelta - before + 2 * DEG) < 1e-12);
-const controlled = make();
-for (let i = 0; i < 100; i++) {
-  shot(controlled);
-  assert(controlled.rp > .68 * DEG, 'each new shot still needs compensation during a long controlled burst');
-  const delta = controlled.consumeRecoil('rp', -controlled.rp);
-  assert.equal(delta, 0, 'compensation cannot permanently push the input baseline below the target');
-}
-ws.resetRecoil(); assert.equal(ws.rp + ws.ry + ws.vmKick + ws.vmRot, 0);
-console.log('PASS recoil: bounded bursts, independent mouse aim, pause, recovery at 30/60/120 FPS, weapon feedback.');
+console.log('PASS disabled camera/model recoil, direct mouse input and precise ADS; hip/shotgun spread preserved.');
