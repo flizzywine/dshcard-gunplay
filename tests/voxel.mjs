@@ -75,6 +75,22 @@ assert(!world.terrain.get(0, 1, 0));
 assert(!world.edit(game.player.pos.clone().setY(1.5), new THREE.Vector3(0, -1, 0), true), 'cannot place inside player');
 const ground = world.terrain.get(5, -1, 5);
 assert(!world.terrain.set(5, -1, 5, null)); assert.equal(world.terrain.get(5, -1, 5), ground);
+// Exercise the real input -> Player -> weapon presentation path. A camera turn
+// must not leave the gun render camera looking at the preceding frame.
+game.player.update(1 / 60, { mdx: 100, mdy: 20 });
+assert(game.camera.quaternion.angleTo(game.vmCamera.quaternion) < 1e-7, 'gun camera must turn with world camera in the same frame');
+assert(game.camera.position.distanceTo(game.vmCamera.position) < 1e-7, 'gun camera must use current eye position');
+assert(game.player.ws.pivot.quaternion.angleTo(game.camera.quaternion) < 1e-7, 'weapon pivot must follow current aim');
+const rays = [], raycast = world.raycast;
+world.raycast = function(origin, direction, ...args) { rays.push(direction.clone()); return raycast.call(this, origin, direction, ...args); };
+game.player.ws.state = 'idle'; game.player.ws.cool = game.player.ws.cycleT = -1;
+const expectedShotYaw = game.player.yaw + 50 * game.settings.sens * .0022;
+game.player.update(1 / 60, { mdx: -50, mdy: 0, fire: true });
+assert(rays.length > 0);
+const shotYaw = Math.atan2(-rays[0].x, -rays[0].z);
+assert(Math.abs(shotYaw - expectedShotYaw - (game.player.cameraShakeX || 0)) < 1e-7, 'turn-and-fire must trace this frame\'s aim, before recoil');
+assert(game.camera.quaternion.angleTo(game.vmCamera.quaternion) < 1e-7, 'gun and world camera remain synchronized after recoil');
+world.raycast = raycast;
 mode.dispose(); game.player.ws.dispose(); for (const b of game.bots) b.dispose(); world.dispose();
 assert.equal(world.terrain.blocks.size, 0); assert.equal(world.terrain.chunks.size, 0);
 console.log('PASS voxel edits: rebuilt wall blocks navigation and bullets; remove/place update occupancy; protected foundation and actor-overlap guard; resources disposed.');

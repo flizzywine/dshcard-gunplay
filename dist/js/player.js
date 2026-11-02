@@ -200,12 +200,14 @@ export class Player {
     if (input.lethalPressed && this.lethal) ws.beginThrow('lethal', this.lethal.id);
     if (input.tacticalPressed && this.tactical) ws.beginThrow('tactical', this.tactical.id);
     if (ws.state === 'cook' && !input.lethal && !input.tactical) ws.endThrow();
-    ws.update(dt, input);
-    // 相机
+    // Apply this frame's mouse/position before ballistics read the camera.
     this.updateCamera(dt);
+    ws.update(dt, input);
+    // ADS, recoil and weapon bob may have changed. Refresh presentation without
+    // advancing smoothing or shake timers a second time.
+    this.syncCamera();
   }
   updateCamera(dt) {
-    const cam = this.game.camera, ws = this.ws;
     const eyeT = this.pos.y + this.curEye() - (this.sliding ? 0.25 : 0);
     this.eyeSmooth = damp(this.eyeSmooth, eyeT, 18, dt);
     if (Math.abs(this.eyeSmooth - eyeT) > 1) this.eyeSmooth = eyeT;
@@ -217,18 +219,24 @@ export class Player {
       const a = this.shakeAmt * (this.shakeT / 0.6);
       sx = (Math.random() - 0.5) * a * 0.05; sy = (Math.random() - 0.5) * a * 0.05;
     }
+    this.cameraShakeX = sx; this.cameraShakeY = sy;
+    this.syncCamera();
+  }
+  syncCamera() {
+    const cam = this.game.camera, ws = this.ws;
     const spd = Math.hypot(this.vel.x, this.vel.z);
     const bob = this.onGround ? Math.sin(ws.bobPhase * 2) * 0.02 * Math.min(1, spd / 6) * (1 - ws.adsT) : 0;
     cam.position.set(this.pos.x, this.eyeSmooth - this.landDip + bob, this.pos.z);
     cam.rotation.order = 'YXZ';
-    cam.rotation.y = this.yaw + sx;
-    cam.rotation.x = this.pitch + ws.rp + this.punchV + sy;
+    cam.rotation.y = this.yaw + (this.cameraShakeX || 0);
+    cam.rotation.x = this.pitch + ws.rp + this.punchV + (this.cameraShakeY || 0);
     cam.rotation.z = this.sliding ? -0.06 : (ws.sprintT * Math.sin(ws.bobPhase) * 0.01);
     const zoom = lerp(1, ws.w ? ws.w.stats.zoom : 1, ws.adsT * ws.adsT);
     const base = this.game.settings.fov;
     const f = 2 * Math.atan(Math.tan(base * DEG / 2) / zoom) / DEG;
-    cam.fov = f + (this.sprinting ? 4 : 0) * (1 - ws.adsT);
-    cam.updateProjectionMatrix();
+    const fov = f + (this.sprinting ? 4 : 0) * (1 - ws.adsT);
+    if (cam.fov !== fov) { cam.fov = fov; cam.updateProjectionMatrix(); }
+    ws.syncViewmodelCamera();
     this.game.audio.setListener(cam.position, this.yaw);
   }
 }

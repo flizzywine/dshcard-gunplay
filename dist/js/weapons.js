@@ -307,13 +307,17 @@ export class WeaponSystem {
     if (inHand) { this.state = 'idle'; }
   }
 
-  updateViewmodel(dt, input) {
-    const game = this.game, pl = this.owner, w = this.w, st = w.stats;
+  syncViewmodelCamera() {
+    const game = this.game;
     const cam = game.camera;
     this.pivot.position.copy(cam.position);
     this.pivot.quaternion.copy(cam.quaternion);
     game.vmCamera.position.copy(cam.position);
     game.vmCamera.quaternion.copy(cam.quaternion);
+  }
+  updateViewmodel(dt, input) {
+    const game = this.game, pl = this.owner, w = this.w, st = w.stats;
+    this.syncViewmodelCamera();
     // 摆动
     this.sway.x = damp(this.sway.x, clamp(-input.mdx * 0.0006, -0.05, 0.05), 8, dt);
     this.sway.y = damp(this.sway.y, clamp(input.mdy * 0.0006, -0.05, 0.05), 8, dt);

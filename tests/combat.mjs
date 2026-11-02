@@ -32,7 +32,7 @@ player.takeDamage(200,{attacker:null});assert.equal(player.alive,false);assert.e
 player.respawn(v(1,0,1),0);assert.equal(player.hp,200);assert.equal(player.alive,true);assert.equal(player.protectedUntil,3.5);
 console.log('PASS: visible-cone assist; wall/smoke/cone/team/alive exclusions; hitscan damage/kill; 200HP damage/death/respawn/protection');
 pg.world={ceilingHeight:()=>Infinity,groundHeight:()=>0,collide(){}};
-pg.settings={sens:1,adsSens:1};player.updateCamera=()=>{};
+pg.settings={sens:1,adsSens:1};player.updateCamera=()=>{};player.syncCamera=()=>{};
 player.hp=100;player.dmgT=1.5;player.update(.4,{mdx:0,mdy:0});assert.equal(player.hp,100);
 player.update(.2,{mdx:0,mdy:0});assert.equal(player.hp,113,'regen65/sec after2s');
 const ws=player.ws;ws.slots=[{stats:{mag:45,reload:1.785,reserve:999,ads:.24,fire:'auto',type:'ar'},mag:10,reserve:999,flash:{visible:false}}];
