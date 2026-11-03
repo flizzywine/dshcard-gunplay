@@ -5,6 +5,9 @@ import { buildGun, buildArms } from './gunmodel.js';
 import { mat } from './materials.js';
 import { fireHitscan, Projectile } from './combat.js';
 import { clamp, damp, lerp, rand, spreadDir, DEG } from './util.js';
+import { reloadPose, at4ReloadPose, RELOAD_CUES } from './reload-animation.js';
+import { pelletDirection } from './shotgun-pattern.js';
+import { createUnvanquishedViewmodel, UNVANQUISHED_SLOTS, UNVANQUISHED_NAMES } from './unvanquished-viewmodel.js';
 
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion();
 
@@ -18,6 +21,7 @@ export class WeaponSystem {
     this.rp = 0; this.lastShot = 0; this.shotsInRow = 0;
     this.vmKick = 0; this.vmRot = 0; this.bobPhase = 0;
     this.sway = new THREE.Vector2(); this.flashT = 0;
+    this.groundBobT = 0; this.jumpSway = 0;
     this.pivot = new THREE.Group();
     game.vmScene.add(this.pivot);
     this.holder = new THREE.Group();
@@ -27,11 +31,21 @@ export class WeaponSystem {
     this.reloadStage = 0;
     this.meleeHit = false;
   }
-  dispose() { this.game.vmScene.remove(this.pivot); }
+  dispose() { for(const slot of this.slots)slot.authored?.dispose();this.game.vmScene.remove(this.pivot); }
 
   makeSlot(cfg) {
     const stats = computeStats(cfg.id, cfg.att || {});
     if (this.owner.isPlayer) stats.ads = Math.max(.07, stats.ads * .5);
+    if(cfg.viewModel === 'unvanquished'){
+      const authored=createUnvanquishedViewmodel(UNVANQUISHED_SLOTS[cfg.id]);
+      stats.name=UNVANQUISHED_NAMES[authored.id];stats.reload=authored.clips.reload.duration;stats.shellReload=false;
+      const group=new THREE.Group();group.add(authored.root);
+      const info=authored.info;info.optic=stats.type==='sniper'?'sniper':authored.id==='lcannon'?'reticle':'iron';
+      const flash=new THREE.Sprite(new THREE.SpriteMaterial({map:this.game.effects.texFlash,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,color:new THREE.Color(3,2.2,1.4)}));
+      // The muzzle is on a source-unit bone; compensate for its model scale.
+      flash.scale.setScalar(.1/.0254);flash.visible=false;info.muzzle.add(flash);
+      return {id:cfg.id,att:cfg.att||{},stats,authored,info,group,flash,mag:stats.mag,reserve:stats.reserve,laserDot:null,magRest:null,boltRest:null,reloadStyle:'authored'};
+    }
     const info = buildGun(cfg.id, cfg.att || {}, cfg.camo || 'none', { noShadow: true });
     const sleeve = mat(this.game.playerSleeve || 'fab_ally');
     const arms = buildArms(info, sleeve);
@@ -47,14 +61,26 @@ export class WeaponSystem {
       laserDot = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(8, 0.5, 0.5) }));
       this.game.scene.add(laserDot); laserDot.visible = false;
     }
-    return { id: cfg.id, att: cfg.att || {}, camo: cfg.camo, stats, info, group: g, flash, mag: stats.mag, reserve: stats.reserve, laserDot };
+    const magRest = info.mag ? { position: info.mag.position.clone(), rotation: info.mag.rotation.clone() } : null;
+    const boltRest = info.bolt?.position.clone();
+    const magGrip = new THREE.Vector3();
+    if (info.mag) {
+      const bounds = new THREE.Box3().setFromObject(info.mag);
+      bounds.getCenter(magGrip);
+      magGrip.x = bounds.min.x - 0.014;
+      magGrip.y = bounds.min.y + Math.min(0.04, (bounds.max.y - bounds.min.y) * 0.5);
+      info.mag.worldToLocal(magGrip);
+      if (stats.shellReload) info.mag.visible = false;
+    }
+    const reloadStyle = info.loadedTube ? 'at4' : stats.shellReload ? 'shell' : WEAPONS[cfg.id].model.revolver ? 'revolver' : stats.type === 'launcher' ? 'launcher' : stats.type === 'pistol' ? 'pistol' : 'magazine';
+    return { id: cfg.id, att: cfg.att || {}, camo: cfg.camo, stats, info, arms, magRest, boltRest, magGrip, reloadStyle, group: g, flash, mag: stats.mag, reserve: stats.reserve, laserDot };
   }
   setLoadout(list) {
-    for (const s of this.slots) { this.holder.remove(s.group); if (s.laserDot) this.game.scene.remove(s.laserDot); }
+    for (const s of this.slots) { this.holder.remove(s.group);s.authored?.dispose(); if (s.laserDot) this.game.scene.remove(s.laserDot); }
     this.slots = list.map(c => this.makeSlot(c));
     this.cur = 0;
     this.showCurrent();
-    this.state = 'switch'; this.stateT = 0; this.stateDur = 0.5;
+    this.state = 'switch'; this.stateT = 0; this.stateDur = this.w.authored?.clips.raise.duration || 0.5;
   }
   replaceSlot(i, cfg, mag, reserve) {
     const old = this.slots[i];
@@ -66,14 +92,27 @@ export class WeaponSystem {
     this.state = 'switch'; this.stateT = 0; this.stateDur = 0.45;
   }
   get w() { return this.slots[this.cur]; }
+  resetReloadParts(w) {
+    if(w.authored){w.authored.reset();return;}
+    if (w.magRest) {
+      w.info.mag.position.copy(w.magRest.position);
+      w.info.mag.rotation.copy(w.magRest.rotation);
+      w.info.mag.visible = !w.stats.shellReload;
+    }
+    if (w.boltRest) w.info.bolt.position.copy(w.boltRest);
+    if(w.info.pump)w.info.pump.position.z=0;
+    w.info.resetTube?.();
+    w.arms.userData.setLeftHand();
+  }
   showCurrent() {
+    this.slots.forEach(s => this.resetReloadParts(s));
     this.slots.forEach((s, i) => { if (i === this.cur) { if (!s.group.parent) this.holder.add(s.group); } else if (s.group.parent) this.holder.remove(s.group); if (s.laserDot) s.laserDot.visible = false; });
   }
   switchTo(i) {
     if (i === this.cur || !this.slots[i] || this.state === 'throw') return;
     this.cur = i; this.showCurrent();
     this.state = 'switch'; this.stateT = 0;
-    this.stateDur = this.owner.hasPerk('amped') ? 0.3 : 0.55;
+    this.stateDur = this.w.authored?.clips.raise.duration || (this.owner.hasPerk('amped') ? 0.3 : 0.55);
     this.game.audio.ui('equip');
     this.adsT = Math.min(this.adsT, 0.3);
   }
@@ -82,6 +121,8 @@ export class WeaponSystem {
     const w = this.w;
     if (!w || this.state !== 'idle' || w.mag >= w.stats.mag || w.reserve <= 0) return;
     this.state = 'reload'; this.stateT = 0; this.reloadStage = 0;
+    this.flashT=0;w.flash.visible=false;
+    this.reloadNeedsBolt = !w.authored && !w.stats.shellReload && !['revolver', 'launcher','at4'].includes(w.reloadStyle) && (w.mag === 0 || w.stats.fire === 'bolt' || w.stats.type === 'lmg');
     let t = w.stats.reload;
     if (this.owner.hasPerk('sleight')) t *= 0.65;
     if (w.stats.type === 'launcher' && this.owner.hasPerk('amped')) t *= 0.6;
@@ -91,45 +132,50 @@ export class WeaponSystem {
   refill(frac = 1) {
     for (const s of this.slots) s.reserve = Math.min(s.stats.reserve * 2, s.reserve + Math.ceil(s.stats.reserve * frac));
   }
-  fullAmmo() { for (const s of this.slots) { s.mag = s.stats.mag; s.reserve = s.stats.reserve; } }
+  fullAmmo() { for (const s of this.slots) { s.mag = s.stats.mag; s.reserve = s.stats.reserve;this.resetReloadParts(s); } }
 
-  update(dt, input) {
+  update(dt, input, syncCamera = null) {
     const game = this.game, pl = this.owner, w = this.w;
     if (!w) return;
     const st = w.stats;
     this.stateT += dt;
+    // Use current movement/input for delayed melee/throw actions too.
+    syncCamera?.(dt);
     this.cool -= dt; this.cycleT -= dt;
     const sprinting = pl.sprinting;
     // 状态机
     if (this.state === 'reload') {
       const k = this.stateT / this.stateDur;
       if (st.shellReload) {
+        if (this.reloadStage === 0 && k >= 0.72) { this.reloadStage = 1; game.audio.reload('shell'); }
         if (this.stateT >= this.stateDur) {
-          w.mag++; w.reserve--; game.audio.reload('shell');
-          if (w.mag < st.mag && w.reserve > 0 && !input.fire) { this.stateT = 0; }
+          w.mag++; w.reserve--;
+          if (w.mag < st.mag && w.reserve > 0 && !input.fire) { this.stateT = 0; this.reloadStage = 0; }
           else { this.state = 'idle'; game.audio.reload('bolt'); }
         }
       } else {
-        if (this.reloadStage === 0 && k > 0.2) { this.reloadStage = 1; game.audio.reload('out'); }
-        if (this.reloadStage === 1 && k > 0.62) { this.reloadStage = 2; game.audio.reload('in'); }
+        if (this.reloadStage === 0 && k >= RELOAD_CUES.out) { this.reloadStage = 1; game.audio.reload('out'); }
+        if (this.reloadStage === 1 && k >= RELOAD_CUES.in) { this.reloadStage = 2; game.audio.reload('in'); }
+        if (this.reloadStage === 2 && k >= RELOAD_CUES.bolt && this.reloadNeedsBolt) { this.reloadStage = 3; game.audio.reload('bolt'); }
         if (this.stateT >= this.stateDur) {
           const need = st.mag - w.mag, take = Math.min(need, w.reserve);
           w.mag += take; w.reserve -= take;
           this.state = 'idle';
-          if (st.fire === 'bolt' || st.type === 'lmg') game.audio.reload('bolt');
         }
       }
-      if (sprinting && !st.shellReload && false) this.state = 'idle';
     } else if (this.state === 'switch' || this.state === 'melee' || this.state === 'throw' || this.state === 'use') {
       if (this.state === 'melee' && !this.meleeHit && this.stateT > 0.12) { this.meleeHit = true; this.doMelee(); }
       if (this.state === 'throw' && this.grenade && this.stateT > 0.22) this.releaseGrenade();
       if (this.stateT >= this.stateDur) this.state = 'idle';
     }
     // 瞄准
-    const wantAds = input.ads && !['switch', 'melee', 'throw', 'cook', 'use'].includes(this.state) && !(this.state === 'reload' && st.shellReload === false && false);
+    const wantAds = input.ads && !['reload', 'switch', 'melee', 'throw', 'cook', 'use'].includes(this.state);
     this.adsT = clamp(this.adsT + (wantAds ? dt / st.ads : -dt / (st.ads * 0.8)), 0, 1);
     // Lowered sprint pose must not block aiming or firing while running.
-    this.sprintT = damp(this.sprintT, sprinting && !input.ads && !input.fire ? 1 : 0, 10, dt);
+    this.sprintT = damp(this.sprintT, sprinting && !input.ads && !input.fire && this.state !== 'reload' ? 1 : 0, 10, dt);
+    // The player's current movement/input pose must be ready before any shot or throw.
+    syncCamera?.(0);
+    this.alignView();
     // 射击
     const semi = st.fire !== 'auto';
     const fireInput = input.fire && (!semi || !this.triggerHeld);
@@ -153,6 +199,8 @@ export class WeaponSystem {
       this.cookT += dt;
       if (this.grenade && this.grenade.type === 'frag' && this.cookT >= 3.0) { this.cooking = false; this.releaseGrenade(true); }
     }
+    // Apply this frame's recoil to presentation without advancing camera motion twice.
+    syncCamera?.(0);
     this.updateViewmodel(dt, input);
     // 激光
     if (w.laserDot) {
@@ -167,15 +215,18 @@ export class WeaponSystem {
   currentSpread() {
     const pl = this.owner, st = this.w.stats;
     const spd = Math.hypot(pl.vel.x, pl.vel.z);
-    let hip = st.hip * (1 + spd / 6 * 0.6) * (pl.onGround ? 1 : 2.2) * (pl.crouchT > 0.5 ? 0.8 : 1);
+    const air = clamp(pl.airT || 0, 0, 1);
+    let hip = st.hip * (1 + spd / 6 * 0.6) * (1 + air * 0.55) * (pl.crouchT > 0.5 ? 0.8 : 1);
     hip *= 1 + Math.min(this.shotsInRow, 10) * 0.03;
-    const ads = st.adsSpread * (1 + spd / 6 * (st.type === 'sniper' ? 6 : 1.2));
-    return lerp(hip, ads, this.adsT) * (this.game.settings.spreadScale ?? 1);
+    const aimedSpread = st.type === 'shotgun' ? Math.min(st.adsSpread, st.hip * 0.8) : st.adsSpread;
+    const ads = aimedSpread * (1 + spd / 6 * (st.type === 'sniper' ? 6 : 1.2)) * (1 + air * 0.35);
+    return lerp(hip, ads, this.adsT) * (st.type === 'shotgun' ? 1 : this.game.settings.spreadScale ?? 1);
   }
 
   fire() {
     const game = this.game, pl = this.owner, w = this.w, st = w.stats;
     w.mag--;
+    w.authored?.fire(Math.max(.08,60/st.rpm));
     this.cool = 60 / st.rpm;
     if (st.fire === 'bolt' || st.fire === 'pump') { this.cycleT = 60 / st.rpm; }
     this.lastShot = performance.now();
@@ -186,18 +237,20 @@ export class WeaponSystem {
     const fwd = cam.getWorldDirection(new THREE.Vector3());
     const muzzleW = this.muzzleWorld(new THREE.Vector3());
     if (st.projectile === 'rocket') {
-      const p = new Projectile(game, 'rocket', origin.clone().addScaledVector(fwd, 0.8), fwd.clone().multiplyScalar(55), pl, 10);
+      const p = new Projectile(game, 'rocket', origin.clone(), fwd.clone().multiplyScalar(55), pl, 10);
       game.projectiles.push(p);
     } else {
       const spread = this.currentSpread() * DEG * 0.5;
-      let anyHit = false, kill = false, head = false;
+      let anyHit = false, kill = false, head = false,damage=0,lastTarget=null;
       for (let i = 0; i < st.pellets; i++) {
-        const d = spreadDir(fwd, spread, new THREE.Vector3());
+        const d = st.type === 'shotgun'
+          ? pelletDirection(fwd, spread, i, st.pellets)
+          : spreadDir(fwd, spread, new THREE.Vector3());
         const r = fireHitscan(game, pl, origin, d, st, st.name);
-        if (r.ent) { anyHit = true; if (r.killed) kill = true; if (r.part === 'head') head = true; }
+        if (r.ent) { anyHit = true;damage+=r.dealt||0;lastTarget=r.ent; if (r.killed) kill = true; if (r.part === 'head') head = true; }
         if (i < 3 && (this.shotsInRow % 2 === 1 || st.pellets > 1 || st.fire !== 'auto')) game.effects.tracer(muzzleW.clone().addScaledVector(fwd, 0.5), r.point, [1.4, 1.0, 0.55]);
       }
-      if (anyHit) { pl.stats.hits++; game.hud.hitmarker(kill, head); game.audio.hit(kill, head); }
+      if (anyHit) { pl.stats.hits++; game.hud.hitmarker(kill, head); game.hud.damageHit?.(damage,lastTarget);game.audio.hit(kill, head); }
     }
     // 特效
     this.flashT = 0.035;
@@ -294,31 +347,45 @@ export class WeaponSystem {
     if (inHand) { this.state = 'idle'; }
   }
 
-  updateViewmodel(dt, input) {
-    const game = this.game, pl = this.owner, w = this.w, st = w.stats;
-    const cam = game.camera;
+  alignView() {
+    const game = this.game, cam = game.camera;
     this.pivot.position.copy(cam.position);
     this.pivot.quaternion.copy(cam.quaternion);
     game.vmCamera.position.copy(cam.position);
     game.vmCamera.quaternion.copy(cam.quaternion);
+    this.pivot.updateMatrixWorld(true);
+  }
+
+  updateViewmodel(dt, input) {
+    const game = this.game, pl = this.owner, w = this.w, st = w.stats;
+    if(w.authored){this.updateAuthoredViewmodel(dt,input);return;}
+    const cam = game.camera;
+    this.alignView();
     // 摆动
     this.sway.x = damp(this.sway.x, clamp(-input.mdx * 0.0006, -0.05, 0.05), 8, dt);
     this.sway.y = damp(this.sway.y, clamp(input.mdy * 0.0006, -0.05, 0.05), 8, dt);
     const spd = Math.hypot(pl.vel.x, pl.vel.z);
+    this.groundBobT = damp(this.groundBobT, pl.onGround ? 1 : 0, 12, dt);
+    this.jumpSway = damp(this.jumpSway, clamp(-pl.vel.y * 0.004, -0.025, 0.025), 10, dt);
     if (pl.onGround) this.bobPhase += dt * spd * (pl.sprinting ? 1.5 : 1.9);
-    const bobAmt = Math.min(1, spd / 5) * (1 - this.adsT * 0.9);
+    const reloadSteady = this.state === 'reload' ? 0.3 : 1;
+    const bobAmt = Math.min(1, spd / 5) * this.groundBobT * (1 - this.adsT) * reloadSteady;
     const a = this.adsT, ae = a * a * (3 - 2 * a);
     const hip = st.type === 'pistol' ? new THREE.Vector3(0.12, -0.13, -0.3) : st.type === 'launcher' ? new THREE.Vector3(0.15, -0.16, -0.25) : new THREE.Vector3(0.15, -0.16, -0.3);
-    const extra = st.type === 'pistol' ? 0.26 : st.type === 'launcher' ? 0.12 : w.info.optic === 'iron' ? 0.03 : 0.0;
+    if(w.info.hipPosition)hip.copy(w.info.hipPosition);
+    const extra = w.info.adsEyeRelief ?? (st.type === 'pistol' ? 0.26 : st.type === 'launcher' ? 0.12 : w.info.optic === 'iron' ? 0.03 : 0.0);
     const ads = _v.set(-w.info.sight.x, -w.info.sight.y, -w.info.sight.z - extra);
+    if(w.info.adsPosition)ads.copy(w.info.adsPosition);
     const pos = hip.clone().lerp(ads, ae);
     const bx = Math.sin(this.bobPhase) * 0.012 * bobAmt, by = -Math.abs(Math.cos(this.bobPhase)) * 0.012 * bobAmt;
-    pos.x += bx + this.sway.x * (1 - ae * 0.8); pos.y += by + this.sway.y * (1 - ae * 0.8);
+    pos.x += bx + this.sway.x * (1 - ae * 0.8) * reloadSteady; pos.y += by + this.sway.y * (1 - ae * 0.8) * reloadSteady;
+    // Small hand inertia conveys take-off/touchdown. Full ADS stays centred.
+    pos.y += (this.jumpSway - pl.landDip * 0.4) * (1 - ae) * reloadSteady;
     pos.z += this.vmKick * (1 - ae * 0.5);
     // 呼吸
     const t = performance.now() * 0.001;
     pos.y += Math.sin(t * 1.6) * 0.002 * (1 - ae);
-    let rx = this.vmRot * (1 - ae * 0.6), ry = 0, rz = bx * 2;
+    let rx = this.vmRot * (1 - ae * 0.6) + this.jumpSway * 0.7 * (1 - ae) * reloadSteady, ry = 0, rz = bx * 2;
     // 冲刺姿势
     const s = this.sprintT;
     pos.x += -0.06 * s; pos.y += -0.05 * s; pos.z += 0.03 * s;
@@ -328,36 +395,65 @@ export class WeaponSystem {
     // 状态动画
     const k = this.stateDur ? clamp(this.stateT / this.stateDur, 0, 1) : 1;
     if (this.state === 'reload') {
-      if (st.shellReload) { rz += 0.25; rx += 0.1 + Math.sin(k * Math.PI) * 0.08; pos.y -= 0.03; }
-      else {
-        const e = Math.sin(k * Math.PI);
-        rz += e * 0.55; rx += e * 0.25; pos.y -= e * 0.05; pos.x -= e * 0.03;
-        if (w.info.mag) {
-          const m = w.info.mag;
-          if (!m.userData.base) m.userData.base = m.position.clone();
-          let off = 0;
-          if (k > 0.2 && k < 0.62) off = Math.min(1, (k - 0.2) / 0.12);
-          if (k >= 0.62 && k < 0.75) off = 1 - (k - 0.62) / 0.13;
-          m.position.copy(m.userData.base).add(new THREE.Vector3(0, -0.25 * off, 0.05 * off));
-          m.visible = !(k > 0.33 && k < 0.5);
+      const pose = reloadPose(k, w.reloadStyle==='at4'?'launcher':w.reloadStyle, this.reloadNeedsBolt);
+      if(w.reloadStyle==='at4')pose.position=[pose.position[0]*.2,pose.position[1]*.12,pose.position[2]];
+      pos.x += pose.position[0]; pos.y += pose.position[1]; pos.z += pose.position[2];
+      rx += pose.rotation[0]; ry += pose.rotation[1]; rz += pose.rotation[2];
+      if (w.magRest) {
+        const m = w.info.mag;
+        m.position.copy(w.magRest.position).add(_v.set(...pose.magPosition));
+        m.rotation.set(w.magRest.rotation.x + pose.magRotation[0], w.magRest.rotation.y + pose.magRotation[1], w.magRest.rotation.z + pose.magRotation[2]);
+        m.visible = pose.magVisible;
+        m.updateMatrix();
+        // Both the hand and the magazine use the same local transform.
+        _v2.copy(w.magGrip).applyMatrix4(m.matrix);
+        if (w.boltRest && pose.handAction) {
+          _v.set(-0.025, 0.025, 0.055 * pose.bolt).add(w.boltRest);
+          _v2.lerp(_v, pose.handAction);
         }
+        _v.copy(w.arms.userData.restHand).lerp(_v2, pose.reach);
+        w.arms.userData.setLeftHand(_v, pose.wrist + pose.magRotation[2]);
       }
-    } else if (w.info.mag && w.info.mag.userData.base) { w.info.mag.position.copy(w.info.mag.userData.base); w.info.mag.visible = true; }
+      if (w.boltRest) w.info.bolt.position.copy(w.boltRest).add(_v.set(0, 0, 0.055 * pose.bolt));
+      if(w.reloadStyle==='at4'){
+        const tube=at4ReloadPose(k),used=w.info.loadedTube,fresh=w.info.replacementTube;
+        used.visible=tube.usedVisible;used.position.fromArray(tube.usedPosition);used.rotation.set(...tube.usedRotation);
+        fresh.visible=tube.freshVisible;fresh.position.fromArray(tube.freshPosition);fresh.rotation.set(...tube.freshRotation);
+        w.arms.userData.setLeftHand(w.arms.userData.restHand.clone().add(_v.set(-.14*tube.reach,.06*tube.reach,.02*tube.reach)),-.2*tube.reach);
+      }
+    } else this.resetReloadParts(w);
     if (this.state === 'switch') { const e = 1 - k; pos.y -= e * 0.3; rx -= e * 0.6; }
     if (this.state === 'melee') { const e = Math.sin(k * Math.PI); pos.z -= e * 0.15; pos.x -= e * 0.1; ry += e * 0.8; rz -= e * 0.4; }
     if (this.state === 'throw' || this.state === 'cook' || this.state === 'use') {
       const e = this.state === 'cook' ? 1 : Math.sin(k * Math.PI);
       pos.y -= e * 0.25; rx -= e * 0.5; pos.x += e * 0.05;
     }
-    if (st.fire === 'bolt' && this.cycleT > 0) { const e = Math.sin((1 - this.cycleT / (60 / st.rpm)) * Math.PI); rz += e * 0.2 * (1 - ae * 0.5); pos.y -= e * 0.02; }
-    if (st.fire === 'pump' && this.cycleT > 0) { const e = Math.sin((1 - this.cycleT / (60 / st.rpm)) * Math.PI); pos.z += e * 0.04; }
+    if (st.fire === 'bolt' && this.cycleT > 0) { const e = Math.sin((1 - this.cycleT / (60 / st.rpm)) * Math.PI); rz += e * 0.2 * (1 - ae * 0.5); pos.y -= e * 0.02;if(w.info.delta&&w.boltRest)w.info.bolt.position.z=w.boltRest.z+e*.085; }
+    if (st.fire === 'pump' && this.cycleT > 0) { const e = Math.sin((1 - this.cycleT / (60 / st.rpm)) * Math.PI); pos.z += e * 0.04;if(w.info.pump){w.info.pump.position.z=e*.09;w.arms.userData.setLeftHand(w.arms.userData.restHand.clone().add(_v.set(0,0,e*.09)));} }
     this.holder.position.copy(pos);
     this.holder.rotation.set(rx, ry, rz);
     // 瞄具遮罩：高倍镜隐藏模型
-    const scoped = (w.info.optic === 'sniper' || w.info.optic === 'acog' || w.info.optic === 'thermal') && this.adsT > 0.85;
+    const scoped = (w.info.optic === 'sniper' || w.info.optic === 'acog' || w.info.optic === 'thermal' || w.info.optic==='at4') && this.adsT > 0.85;
     this.holder.visible = !scoped;
     game.scopeState = scoped ? w.info.optic : null;
     game.vmCamera.fov = lerp(52, st.type === 'pistol' ? 45 : 40, ae);
     game.vmCamera.updateProjectionMatrix();
+  }
+  updateAuthoredViewmodel(dt,input){
+    const w=this.w,g=this.game,p=this.owner;this.alignView();
+    w.authored.update(dt,this.state,this.stateT,this.stateDur);
+    const ads=this.adsT*this.adsT*(3-2*this.adsT),moving=Math.min(1,Math.hypot(p.vel.x,p.vel.z)/5),ground=p.onGround?1:0;
+    this.bobPhase+=dt*moving*8;
+    this.sway.x=damp(this.sway.x,clamp(-input.mdx*.00015,-.015,.015),8,dt);
+    this.sway.y=damp(this.sway.y,clamp(input.mdy*.00015,-.015,.015),8,dt);
+    this.holder.position.copy(w.authored.aimOffset).multiplyScalar(ads);
+    const steady=this.state==='reload'?.15:1;
+    this.holder.position.x+=(Math.sin(this.bobPhase)*.004*moving*ground+this.sway.x)*(1-ads)*steady;
+    this.holder.position.y+=(-Math.abs(Math.cos(this.bobPhase))*.004*moving*ground+this.sway.y-p.landDip*.2)*(1-ads)*steady;
+    this.holder.position.z+=this.vmKick*.35;
+    this.holder.rotation.set(this.vmRot*.2,0,0);
+    const scoped=w.stats.type==='sniper'&&this.adsT>.85;
+    this.holder.visible=!scoped;g.scopeState=scoped?'sniper':null;
+    g.vmCamera.fov=lerp(75,62,ads);g.vmCamera.updateProjectionMatrix();
   }
 }

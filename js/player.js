@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { WeaponSystem } from './weapons.js';
 import { clamp, damp, lerp, raySphere, rayAABB, DEG } from './util.js';
 import { WEAPONS, LETHALS, TACTICALS } from './data.js';
+import { motionSpring } from './first-person-motion.js';
 
 export class Player {
   constructor(game, opts) {
@@ -19,6 +20,9 @@ export class Player {
     this.onGround = true; this.eyeH = 1.62; this.eyeSmooth = this.pos.y + 1.62;
     this.dmgT = 99; this.shakeT = 0; this.shakeAmt = 0; this.punchV = 0; this.landDip = 0;
     this.stepDist = 0; this.revealT = 0;
+    this.cameraShake = new THREE.Vector2();
+    this.cameraFeetY = this.pos.y; this.cameraGrounded = true;
+    this.landDipV = 0; this.airT = 0;
     this.perks = new Set(opts.perks || []);
     this.stats = { kills: 0, deaths: 0, shots: 0, hits: 0, headshots: 0, score: 0, streak: 0, assists: 0, captures: 0 };
     this.dmgMul = opts.dmgMul || 1;
@@ -27,14 +31,14 @@ export class Player {
     this.lastAttacker = null;
     this.interactHold = 0;
     this.radius = 0.35;
+    this.physicsBody = game.world.physics.createCharacter(this.pos, this.radius);
     this.aimLatched = false;
   }
   hasPerk(id) { return this.perks.has(id); }
   equip(loadout) {
     // loadout: {primary:{id,att,camo}, secondary:{...}, lethal, tactical, perks}
     this.perks = new Set(loadout.perks || []);
-    const list = [loadout.primary];
-    if (loadout.secondary) list.push(loadout.secondary);
+    const list = loadout.weapons || [loadout.primary, loadout.secondary].filter(Boolean);
     this.ws.setLoadout(list);
     const L = LETHALS.find(l => l.id === loadout.lethal), T = TACTICALS.find(t => t.id === loadout.tactical);
     this.lethal = L ? { id: L.id, name: L.name, count: L.count + (loadout.extraLethal || 0), max: L.count + (loadout.extraLethal || 0) } : null;
@@ -45,8 +49,11 @@ export class Player {
     this.resetAim();
     this.prone = false; this.proneT = 0; this.sprinting = false; this.slideT = 0;
     this.pos.copy(pos); this.vel.set(0, 0, 0); this.yaw = yaw; this.pitch = 0;
+    this.physicsBody.reset(this.pos);
     this.hp = this.maxHp; this.alive = true; this.dmgT = 99; this.crouchT = 0; this.crouching = false; this.sliding = false;
     this.eyeSmooth = pos.y + 1.62; this.stats.streak = 0;
+    this.cameraFeetY = pos.y; this.cameraGrounded = true; this.cameraShake.set(0, 0);
+    this.onGround = true; this.landDip = 0; this.landDipV = 0; this.airT = 0;
     this.ws.fullAmmo();
     if (this.lethal) this.lethal.count = this.lethal.max;
     if (this.tactical) this.tactical.count = this.tactical.max;
@@ -56,8 +63,7 @@ export class Player {
   chestPos(out) { return out.set(this.pos.x, this.pos.y + this.curEye() - 0.4, this.pos.z); }
   curEye() { return lerp(lerp(1.62, 1.05, this.crouchT), 0.42, this.proneT); }
   leaveProne(crouch = false) {
-    const ceiling = this.game.world.ceilingHeight(this.pos.x, this.pos.z, this.pos.y, this.radius);
-    if (ceiling < this.pos.y + (crouch ? 1.25 : 1.8) + 0.05) return false;
+    if (!this.physicsBody.canFit(this.pos, crouch ? 1.25 : 1.8)) return false;
     this.prone = false; this.crouching = crouch;
     return true;
   }
@@ -82,7 +88,7 @@ export class Player {
     if (!info.burn || Math.random() < 0.1) this.game.audio.hurt();
     this.punch(0.02);
     if (this.hp <= 0) {
-      this.hp = 0; this.alive = false; this.resetAim(); this.stats.deaths++;
+      this.hp = 0; this.alive = false; this.physicsBody.disable(); this.resetAim(); this.stats.deaths++;
       this.game.onKill(info.attacker, this, info.weapon, info.head);
       return true;
     }
@@ -142,8 +148,7 @@ export class Player {
     if (!wantSprint) this.sprinting = false;
     // 头顶空间检查（蹲伏时不能站起）
     if (!this.crouching && this.crouchT > 0.1) {
-      const c = world.ceilingHeight(this.pos.x, this.pos.z, this.pos.y, this.radius);
-      if (c < this.pos.y + 1.85) this.crouching = true;
+      if (!this.physicsBody.canFit(this.pos, 1.8)) this.crouching = true;
     }
     this.proneT = damp(this.proneT, this.prone ? 1 : 0, 14, dt);
     this.crouchT = damp(this.crouchT, this.crouching ? 1 : 0, 12, dt);
@@ -173,29 +178,37 @@ export class Player {
     if (input.jumpPressed && this.onGround) {
       if (this.prone) this.leaveProne();
       else if (this.crouching) {
-        if (world.ceilingHeight(this.pos.x, this.pos.z, this.pos.y, this.radius) >= this.pos.y + 1.85) this.crouching = false;
+        if (this.physicsBody.canFit(this.pos, 1.8)) this.crouching = false;
       }
       else { this.vel.y = 5.6; this.onGround = false; this.sliding = false; }
     }
+    const verticalMove = this.vel.y * dt - 9 * dt * dt;
     this.vel.y -= 18 * dt;
     // 积分与碰撞
     const px = this.pos.x, pz = this.pos.z;
-    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
     const h = lerp(lerp(1.8, 1.25, this.crouchT), 0.6, this.proneT);
-    world.collide(this.pos, this.vel, this.radius, h);
-    this.pos.y += this.vel.y * dt;
-    const g = world.groundHeight(this.pos.x, this.pos.z, this.pos.y - this.vel.y * dt, this.radius);
     const wasGround = this.onGround;
-    if (this.pos.y <= g) {
-      if (!wasGround && this.vel.y < -6) { this.landDip = Math.min(0.15, -this.vel.y * 0.012); game.audio.step(null, 'dirt', 0.35); }
-      this.pos.y = g; this.vel.y = 0; this.onGround = true;
-    } else if (this.pos.y > g + 0.05) {
-      if (wasGround && this.vel.y <= 0 && this.pos.y - g < 0.5) { this.pos.y = g; this.vel.y = 0; }
-      else this.onGround = false;
+    const movement = this.physicsBody.move(this.pos, { x: this.vel.x * dt, y: verticalMove, z: this.vel.z * dt }, h);
+    this.pos.copy(movement.position);
+    // Rapier may still report the floor contact during a small take-off step
+    // (notably at 120 Hz). Upward velocity must survive that initial contact.
+    this.onGround = movement.grounded && this.vel.y <= 0;
+    // Remove velocity into contacts without a second legacy collision pass.
+    for (const normal of movement.normals) {
+      if (normal.y < -0.5 && this.vel.y > 0) this.vel.y = 0;
+      if (Math.abs(normal.y) < 0.5) {
+        const into = this.vel.x * normal.x + this.vel.z * normal.z;
+        if (into < 0) { this.vel.x -= into * normal.x; this.vel.z -= into * normal.z; }
+      }
     }
-    // 天花板
-    const ceil = world.ceilingHeight(this.pos.x, this.pos.z, this.pos.y, this.radius);
-    if (this.pos.y + h > ceil && this.vel.y > 0) { this.vel.y = 0; this.pos.y = ceil - h; }
+    if (this.onGround) {
+      if (!wasGround && this.vel.y < -2.5) {
+        this.landDipV = Math.min(3, -this.vel.y * 0.35);
+        game.audio.step(null, game.world.def.surface || 'dirt', 0.25);
+      }
+      this.vel.y = 0;
+    }
+    this.airT = damp(this.airT, this.onGround ? 0 : 1, 12, dt);
     // 脚步
     const moved = Math.hypot(this.pos.x - px, this.pos.z - pz);
     if (this.onGround && !this.sliding && !this.prone) {
@@ -220,30 +233,41 @@ export class Player {
     if (input.swapPressed) ws.switchTo((ws.cur + 1) % ws.slots.length);
     if (input.slot1) ws.switchTo(0);
     if (input.slot2) ws.switchTo(1);
+    if (input.slot3) ws.switchTo(2);
+    if (input.slot4) ws.switchTo(3);
     if (input.meleePressed) ws.melee();
     if (input.lethalPressed && this.lethal) ws.beginThrow('lethal', this.lethal.id);
     if (input.tacticalPressed && this.tactical) ws.beginThrow('tactical', this.tactical.id);
     if (ws.state === 'cook' && !input.lethal && !input.tactical) ws.endThrow();
-    ws.update(dt, input);
-    // 相机
-    this.updateCamera(dt);
+    ws.update(dt, input, delta => this.updateCamera(delta));
+    if (!ws.w) this.updateCamera(dt);
   }
   updateCamera(dt) {
     const cam = this.game.camera, ws = this.ws;
     const eyeT = this.pos.y + this.curEye() - (this.sliding ? 0.25 : 0);
+    if (dt > 0) {
+      // Smooth stairs/stance changes, but carry the body displacement exactly
+      // during flight and touchdown instead of dragging the eye behind it.
+      if (!this.onGround || !this.cameraGrounded) this.eyeSmooth += this.pos.y - this.cameraFeetY;
+      this.cameraFeetY = this.pos.y; this.cameraGrounded = this.onGround;
+    }
     this.eyeSmooth = damp(this.eyeSmooth, eyeT, 18, dt);
     if (Math.abs(this.eyeSmooth - eyeT) > 1) this.eyeSmooth = eyeT;
-    this.landDip = damp(this.landDip, 0, 8, dt);
+    const landing = motionSpring(this.landDip, this.landDipV, 0, 22, dt);
+    this.landDip = landing.value; this.landDipV = landing.velocity;
     this.punchV = damp(this.punchV, 0, 10, dt);
-    let sx = 0, sy = 0;
-    if (this.shakeT > 0) {
-      this.shakeT -= dt;
-      const a = this.shakeAmt * (this.shakeT / 0.6);
-      sx = (Math.random() - 0.5) * a * 0.05; sy = (Math.random() - 0.5) * a * 0.05;
+    if (dt > 0) {
+      this.cameraShake.set(0, 0);
+      if (this.shakeT > 0) {
+        this.shakeT -= dt;
+        const a = this.shakeAmt * (Math.max(0, this.shakeT) / 0.6);
+        this.cameraShake.set((Math.random() - 0.5) * a * 0.05, (Math.random() - 0.5) * a * 0.05);
+      }
     }
+    const sx = this.cameraShake.x, sy = this.cameraShake.y;
     const spd = Math.hypot(this.vel.x, this.vel.z);
-    const bob = this.onGround ? Math.sin(ws.bobPhase * 2) * 0.02 * Math.min(1, spd / 6) * (1 - ws.adsT) : 0;
-    cam.position.set(this.pos.x, this.eyeSmooth - this.landDip + bob, this.pos.z);
+    const bob = Math.sin(ws.bobPhase * 2) * 0.02 * Math.min(1, spd / 6) * ws.groundBobT * (1 - ws.adsT);
+    cam.position.set(this.pos.x, this.eyeSmooth - this.landDip * lerp(1, 0.45, ws.adsT) + bob, this.pos.z);
     cam.rotation.order = 'YXZ';
     cam.rotation.y = this.yaw + sx;
     cam.rotation.x = this.pitch + ws.rp + this.punchV + sy;

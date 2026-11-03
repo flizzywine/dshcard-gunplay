@@ -1,5 +1,6 @@
 // 程序化枪械模型（含配件可视化）
 import * as THREE from 'three';
+import { buildDeltaGun, deltaWeaponReady } from './delta-weapons.js';
 import { WEAPONS } from './data.js';
 import { mat, camoMaterial } from './materials.js';
 
@@ -16,6 +17,7 @@ function cgeo(r1, r2, len, seg = 14) {
 }
 
 export function buildGun(weaponId, att = {}, camo = 'none', opts = {}) {
+  if(deltaWeaponReady(weaponId))return buildDeltaGun(weaponId,opts);
   const def = WEAPONS[weaponId];
   const M = def.model;
   const root = new THREE.Group();
@@ -57,14 +59,13 @@ export function buildGun(weaponId, att = {}, camo = 'none', opts = {}) {
     if (M.revolver) {
       add(bgeo(0.028, 0.035, 0.16), body, 0, 0.055, -0.1);
       add(cgeo(0.011, 0.011, 0.2), body, 0, 0.06, -0.14);
-      add(cgeo(0.028, 0.028, 0.05, 12), metal, 0, 0.05, -0.02);
+      info.mag = add(cgeo(0.028, 0.028, 0.05, 12), metal, 0, 0.05, -0.02);
       add(bgeo(0.03, 0.1, 0.045), mat('gunWood'), 0, -0.02, 0.04, 0.3);
       add(bgeo(0.004, 0.012, 0.01), metal, 0, 0.078, -0.23);
       info.muzzle.position.set(0, 0.06, -0.25);
       info.sight.set(0, 0.083, 0.02);
-      info.mag = add(bgeo(0.001, 0.001, 0.001), metal, 0, 0.05, -0.02);
     } else {
-      add(bgeo(0.03, 0.032, 0.2), body, 0, 0.05, -0.07);
+      info.bolt = add(bgeo(0.03, 0.032, 0.2), body, 0, 0.05, -0.07);
       add(bgeo(0.028, 0.025, 0.16), metal, 0, 0.022, -0.06);
       add(bgeo(0.03, 0.1, 0.045), furn, 0, -0.03, 0.03, 0.25);
       add(bgeo(0.005, 0.03, 0.04), metal, 0, 0.0, -0.035);
@@ -108,7 +109,7 @@ export function buildGun(weaponId, att = {}, camo = 'none', opts = {}) {
   if (!low) {
     for (let i = 0; i < Math.floor(recv / 0.02); i++) add(bgeo(0.026, 0.004, 0.008), metal, 0, railY + 0.014, zRear - 0.01 - i * 0.02);
     add(bgeo(0.005, 0.025, 0.06), mat('gunSteel'), 0.027, 0.035, -0.03); // 抛壳窗
-    add(bgeo(0.02, 0.01, 0.03), metal, 0.03, 0.045, zRear - 0.04); // 拉机柄
+    info.bolt = add(bgeo(0.02, 0.01, 0.03), metal, 0.03, 0.045, zRear - 0.04); // 拉机柄
   }
   // 护木
   const hz0 = zFront, hz1 = zFront - hand;
@@ -230,7 +231,9 @@ export function buildGun(weaponId, att = {}, camo = 'none', opts = {}) {
     if (att.mag === 'fast') add(bgeo(0.03, L, 0.08), mm, 0.035, -L / 2, 0, 0, 0, 0, magG);
   } else if (M.mag === 'tube') {
     magG.position.set(0, -0.02, -0.03);
-    add(bgeo(0.02, 0.012, 0.03), mat('brass'), 0, 0, 0, 0, 0, 0, magG);
+    add(cgeo(0.010, 0.010, 0.055), mat('gunWood'), 0, 0, 0, 0, 0, 0, magG);
+    add(cgeo(0.011, 0.011, 0.012), mat('brass'), 0, 0, 0.025, 0, 0, 0, magG);
+    magG.visible = false;
   }
   // 枪托
   const st = att.stock || null;
@@ -299,10 +302,34 @@ export function buildArms(gunInfo, sleeveMat) {
   const lh = gunInfo.leftHand.clone().add(new THREE.Vector3(-0.012, -0.015, 0));
   const le = new THREE.Vector3(-0.14, -0.14, lh.z + 0.2);
   const ls = new THREE.Vector3(-0.22, -0.3, lh.z + 0.55);
-  limb(lh, le, 0.032, glove);
-  limb(le.clone().lerp(lh, 0.3), le, 0.042, sleeveMat);
-  limb(le, ls, 0.055, sleeveMat);
-  const lhand = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.1), glove); lhand.position.copy(lh); lhand.rotation.z = 0.5; g.add(lhand);
+  const forearm = limb(lh, le, 0.032, glove);
+  const cuffStart = le.clone().lerp(lh, 0.3);
+  const cuff = limb(cuffStart, le, 0.042, sleeveMat);
+  const upper = limb(le, ls, 0.055, sleeveMat);
+  const lhand = new THREE.Group(); lhand.position.copy(lh); lhand.rotation.z = 0.5; g.add(lhand);
+  lhand.add(new THREE.Mesh(bgeo(0.045, 0.045, 0.075), glove));
+  const thumb = new THREE.Mesh(bgeo(0.018, 0.024, 0.045), glove);
+  thumb.position.set(0.025, 0.009, -0.016); thumb.rotation.z = -0.4; lhand.add(thumb);
+  const lengths = [lh.distanceTo(le), cuffStart.distanceTo(le), le.distanceTo(ls)];
+  const elbow = le.clone(), sleeveStart = cuffStart.clone(), direction = new THREE.Vector3();
+  const up = new THREE.Vector3(0, 1, 0);
+  const placeLimb = (mesh, a, b, length) => {
+    direction.subVectors(b, a);
+    mesh.position.copy(a).addScaledVector(direction, 0.5);
+    mesh.scale.y = direction.length() / length;
+    mesh.quaternion.setFromUnitVectors(up, direction.normalize());
+  };
+  // Keep the shoulder anchored while the support hand reaches for the magazine.
+  g.userData.setLeftHand = (target = lh, roll = 0) => {
+    elbow.copy(le).addScaledVector(direction.subVectors(target, lh), 0.45);
+    elbow.x = Math.min(-0.09, elbow.x);
+    sleeveStart.copy(elbow).lerp(target, 0.3);
+    placeLimb(forearm, target, elbow, lengths[0]);
+    placeLimb(cuff, sleeveStart, elbow, lengths[1]);
+    placeLimb(upper, elbow, ls, lengths[2]);
+    lhand.position.copy(target); lhand.rotation.set(0, 0, 0.5 + roll);
+  };
+  g.userData.restHand = lh;
   g.traverse(o => { if (o.isMesh) o.castShadow = false; });
   return g;
 }

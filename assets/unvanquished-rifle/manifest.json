@@ -1,0 +1,121 @@
+{
+  "retrieved": "2026-11-03T12:53:43.767Z",
+  "commits": {
+    "res-weapons_src.dpkdir": "5af7744d4d295ef71ea30b5b4e29d166555b152a",
+    "res-players_src.dpkdir": "bbf9e8f276b3cf3f4b3fab217f2c947d2dd25515"
+  },
+  "files": [
+    {
+      "repo": "res-weapons_src.dpkdir",
+      "path": "models/weapons/rifle/rifle_view.md5mesh",
+      "name": "rifle_view.md5mesh",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/rifle/rifle_view.md5mesh",
+      "bytes": 780307,
+      "sha256": "b8d8ade1e350f713cb586eec8bc367fc22170be83569c3a30c268ff0b3c1eae3"
+    },
+    {
+      "repo": "res-weapons_src.dpkdir",
+      "path": "models/weapons/rifle/rifle_view_idle.md5anim",
+      "name": "rifle_view_idle.md5anim",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/rifle/rifle_view_idle.md5anim",
+      "bytes": 1397323,
+      "sha256": "74037ee1b0e00fc60fd1da68ed9ccd128fbb7a593d450453a0151925fe0ab98c"
+    },
+    {
+      "repo": "res-weapons_src.dpkdir",
+      "path": "models/weapons/rifle/rifle_view_fire.md5anim",
+      "name": "rifle_view_fire.md5anim",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/rifle/rifle_view_fire.md5anim",
+      "bytes": 42509,
+      "sha256": "09a77c5326f0bd43736d68935c61cd35e55d8ae779adfd20e9df43e124cf9888"
+    },
+    {
+      "repo": "res-weapons_src.dpkdir",
+      "path": "models/weapons/rifle/rifle_view_reload.md5anim",
+      "name": "rifle_view_reload.md5anim",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/rifle/rifle_view_reload.md5anim",
+      "bytes": 397563,
+      "sha256": "d3986eed192e48772d6e5d5b6e4ace384ee4e6e37e0aff0f5a9917c43cb3b8c4"
+    },
+    {
+      "repo": "res-weapons_src.dpkdir",
+      "path": "models/weapons/rifle/rifle_view_raise.md5anim",
+      "name": "rifle_view_raise.md5anim",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/rifle/rifle_view_raise.md5anim",
+      "bytes": 92664,
+      "sha256": "984e4fd06a7be82eb70c24ad9d2692cabe66959fe3160ace7f3641b681c53028"
+    },
+    {
+      "repo": "res-weapons_src.dpkdir",
+      "path": "models/weapons/rifle/rifle_view_lower.md5anim",
+      "name": "rifle_view_lower.md5anim",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/rifle/rifle_view_lower.md5anim",
+      "bytes": 78924,
+      "sha256": "0880a477f5e94a11524b1c898ac4121019271a0699f076060cd19863af28b947"
+    },
+    {
+      "repo": "res-weapons_src.dpkdir",
+      "path": "models/weapons/rifle/rifle.png",
+      "name": "rifle.png",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/rifle/rifle.png",
+      "bytes": 5298864,
+      "sha256": "c87eef00833eec78e45ac63a0c2a34c3b03249526d92112dbcfa44c761d31376"
+    },
+    {
+      "repo": "res-weapons_src.dpkdir",
+      "path": "models/weapons/rifle/rifle_n.png",
+      "name": "rifle_n.png",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/rifle/rifle_n.png",
+      "bytes": 2770184,
+      "sha256": "b77862c477d771fb98a2cb09cd40eb84d5ff7b32c20ad2f2844f83bf78ae996c"
+    },
+    {
+      "repo": "res-weapons_src.dpkdir",
+      "path": "models/weapons/rifle/rifle_s.png",
+      "name": "rifle_s.png",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/rifle/rifle_s.png",
+      "bytes": 1313999,
+      "sha256": "b0f4764d5128eb44f67abd3e21ed67a9b8ce5c47b90199af7eaf1a71a01edc60"
+    },
+    {
+      "repo": "res-weapons_src.dpkdir",
+      "path": "models/weapons/rifle/license.txt",
+      "name": "license.txt",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/rifle/license.txt",
+      "bytes": 208,
+      "sha256": "cd74f6c7aa2ff28786ec7a95582299960dbb3f6c993d23f786f8f952e97dbb97"
+    },
+    {
+      "repo": "res-weapons_src.dpkdir",
+      "path": "models/weapons/rifle/weapon.cfg",
+      "name": "weapon.cfg",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/rifle/weapon.cfg",
+      "bytes": 876,
+      "sha256": "2680c21cff4599037f51ccbee8ec4ef305ace9e4bdd6bdcc5d35e889a8143517"
+    },
+    {
+      "repo": "res-players_src.dpkdir",
+      "path": "models/players/human_hand/hand.png",
+      "name": "hand.png",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-players_src.dpkdir/bbf9e8f276b3cf3f4b3fab217f2c947d2dd25515/models/players/human_hand/hand.png",
+      "bytes": 1723584,
+      "sha256": "df460e8a5499cad82c4af52254d83185ecf1d662fe416a9424c3a428e4bd09d6"
+    },
+    {
+      "repo": "res-players_src.dpkdir",
+      "path": "models/players/human_hand/hand_n.png",
+      "name": "hand_n.png",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-players_src.dpkdir/bbf9e8f276b3cf3f4b3fab217f2c947d2dd25515/models/players/human_hand/hand_n.png",
+      "bytes": 907462,
+      "sha256": "2607c3f947a2b00e428bb835eef9e6d81b656382be21392561ecf3adb9889333"
+    },
+    {
+      "repo": "res-players_src.dpkdir",
+      "path": "models/players/human_hand/hand_s.png",
+      "name": "hand_s.png",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-players_src.dpkdir/bbf9e8f276b3cf3f4b3fab217f2c947d2dd25515/models/players/human_hand/hand_s.png",
+      "bytes": 2044863,
+      "sha256": "456fdfcdcba840820ea2d10f92053f6cccecb9e6b9601271601328867eb05ec7"
+    }
+  ]
+}

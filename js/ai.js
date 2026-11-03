@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { createSoldierModel, animateSoldier, makeNameTag, applyFlashTex, SOLDIER_BODY_WIDTH } from './soldier.js';
 import { computeStats, WEAPONS } from './data.js';
 import { fireHitscan, Projectile } from './combat.js';
+import { separateBots } from './ai-movement.js';
+import { CoverReload } from './ai-cover.js';
 import { clamp, damp, rand, angleDiff, raySphere, rayAABB, spreadDir, DEG, pick } from './util.js';
 
 const SOLDIER_SCALE = 1.15;
@@ -25,7 +27,7 @@ export class Bot {
     this.role = o.role || 'mp';
     this.diff = DIFF[o.difficulty ?? 1];
     this.difficulty = o.difficulty ?? 1;
-    this.weaponId = o.weaponId || 'ak';
+    this.weaponId = o.weaponId || 'm4';
     this.att = o.att || {};
     this.stats = computeStats(this.weaponId, this.att);
     this.maxHp = o.hp || 100; this.hp = this.maxHp;
@@ -40,6 +42,7 @@ export class Bot {
     if (o.tag) { this.tag = makeNameTag(this.name, o.tagColor || '#6cf'); this.model.root.add(this.tag); }
     this.anim = { speed: 0, phase: Math.random() * 6, crouch: 0, pitch: 0, dead: false, deadT: 0, fallDir: 1, fallRoll: 0, recoil: 0 };
     this.mag = this.stats.mag;
+    this.coverReload = new CoverReload(); this.reloadPending = false; this.lastSeenEye = null;
     this.target = null; this.targetVisible = false; this.lastSeenPos = null; this.lastSeenT = -99; this.acquireT = 0;
     this.perceiveT = Math.random() * 0.2; this.fireT = 0; this.burstLeft = 0; this.reloadT = 0;
     this.path = null; this.pathT = -99; this.pathGoal = null; this.goal = null; this.goalT = 0;
@@ -58,9 +61,15 @@ export class Bot {
     this.patrol = o.patrol || null; this.patrolI = 0;
     this.assaultTarget = o.assaultTarget || null;
     this.radius = 0.35 * SOLDIER_BODY_WIDTH * SOLDIER_SCALE;
+    this.physicsBody = game.world.physics.createCharacter(this.pos, this.radius, 1.7 * SOLDIER_SCALE);
     this.dmgTaken = new Map();
   }
   get crouch() { return this.anim.crouch; }
+  coverShape(c) {
+    return { height: (1.7 - 0.5 * c) * SOLDIER_SCALE, head: (1.68 - 0.5 * c) * SOLDIER_SCALE,
+      headTop: (1.83 - 0.5 * c) * SOLDIER_SCALE, chest: (1.2 - 0.4 * c) * SOLDIER_SCALE,
+      shoulder: 0.27 * SOLDIER_BODY_WIDTH * SOLDIER_SCALE };
+  }
   eyePos(out) { return out.set(this.pos.x, this.pos.y + (1.6 - this.anim.crouch * 0.5) * SOLDIER_SCALE, this.pos.z); }
   chestPos(out) { return out.set(this.pos.x, this.pos.y + (1.2 - this.anim.crouch * 0.4) * SOLDIER_SCALE, this.pos.z); }
   forward(out) { return out.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw)); }
@@ -89,6 +98,7 @@ export class Bot {
     // 被攻击时立即察觉
     if (a && a.alive && a.pos) {
       this.lastSeenPos = a.pos.clone(); this.lastSeenT = this.game.time;
+      this.lastSeenEye = a.eyePos ? a.eyePos(new THREE.Vector3()) : a.pos.clone().add(new THREE.Vector3(0, 1.7, 0));
       this.alerted = true;
       if (!this.target) { this.target = a; this.acquireT = this.game.time - this.diff.react * 0.5; }
       if (this.group) this.game.alertGroup && this.game.alertGroup(this.group, a.pos);
@@ -100,7 +110,9 @@ export class Bot {
     return false;
   }
   die(info) {
+    this.cancelReload(); this.coverReload.reset(this);
     this.alive = false; this.hp = 0; this.deaths++;
+    this.physicsBody.disable();
     this.anim.dead = true; this.anim.deadT = 0;
     const d = info.dir || new THREE.Vector3(0, 0, 1);
     const f = this.forward(_a);
@@ -112,16 +124,19 @@ export class Bot {
     this.game.onKill(info.attacker, this, info.weapon, info.head, info);
   }
   respawn(pos, yaw) {
+    this.cancelReload(); this.coverReload.reset(this); this.lastSeenEye = null;
     this.pos.copy(pos); this.vel.set(0, 0, 0); this.yaw = yaw; this.hp = this.maxHp; this.alive = true;
+    this.crouchT = 0; this.wantCrouch = false; this.anim.crouch = 0;
+    this.physicsBody.reset(this.pos, 1.7 * SOLDIER_SCALE);
     this.anim.dead = false; this.anim.deadT = 0; this.model.root.rotation.set(0, yaw, 0);
     this.mag = this.stats.mag; this.target = null; this.lastSeenPos = null; this.path = null; this.goal = null;
-    this.stunT = 0; this.grenades = 1; this.reloadT = 0; this.streak = 0;
+    this.stunT = 0; this.grenades = 0; this.reloadT = 0; this.streak = 0;
     if (this.tag) this.tag.visible = true;
     this.model.root.visible = true;
     this.dmgTaken.clear();
   }
-  stun(t) { this.stunT = Math.max(this.stunT, t); }
-  hint(pos) { if (!this.target || !this.targetVisible) { this.lastSeenPos = pos.clone(); this.lastSeenT = this.game.time - 2; this.alerted = true; } }
+  stun(t) { this.stunT = Math.max(this.stunT, t); this.coverReload.cancel(this); }
+  hint(pos) { if (!this.target || !this.targetVisible) { this.lastSeenPos = pos.clone(); this.lastSeenEye = pos.clone().add(new THREE.Vector3(0, 1.7, 0)); this.lastSeenT = this.game.time - 2; this.alerted = true; } }
 
   isEnemy(e) { return e.team !== this.team && e.alive && e.targetable !== false; }
 
@@ -172,6 +187,7 @@ export class Bot {
       }
       this.target = best; this.targetVisible = true;
       this.lastSeenPos = best.pos.clone(); this.lastSeenT = game.time;
+      this.lastSeenEye = best.eyePos(new THREE.Vector3());
       if (!this.alerted) { this.alerted = true; if (this.group && game.alertGroup) game.alertGroup(this.group, best.pos); }
     } else {
       this.targetVisible = false;
@@ -185,6 +201,7 @@ export class Bot {
         if (d < n.r) {
           if (!this.lastSeenPos || game.time - this.lastSeenT > 2) {
             this.lastSeenPos = n.pos.clone(); this.lastSeenT = game.time - 1;
+            this.lastSeenEye = n.pos.clone().add(new THREE.Vector3(0, 1.7, 0));
             if (!this.alerted && this.group && game.alertGroup && !n.footstep) game.alertGroup(this.group, n.pos);
             this.alerted = true;
           }
@@ -201,16 +218,16 @@ export class Bot {
     this.pathT = game.time; this.pathGoal = goal.clone();
   }
   // 沿路径移动，返回期望速度方向
-  steer(goal, speed, out) {
+  steer(goal, speed, out, arrivalRadius = 0.8) {
     const game = this.game;
     if (!goal) return out.set(0, 0, 0);
     const dGoal = Math.hypot(goal.x - this.pos.x, goal.z - this.pos.z);
-    if (dGoal < 0.8) { this.path = null; return out.set(0, 0, 0); }
+    if (dGoal < arrivalRadius && (!game.world.navigation || Math.abs(goal.y - this.pos.y) < 0.6)) { this.path = null; return out.set(0, 0, 0); }
     // 直线可达直接走
     if (!this.path || !this.pathGoal || this.pathGoal.distanceTo(goal) > 2.5 || game.time - this.pathT > 4) this.requestPath(goal);
     let next = goal;
     if (this.path && this.path.length) {
-      while (this.path.length > 1 && Math.hypot(this.path[0].x - this.pos.x, this.path[0].z - this.pos.z) < 0.8) this.path.shift();
+      while (this.path.length > 1 && Math.hypot(this.path[0].x - this.pos.x, this.path[0].z - this.pos.z) < (game.world.navigation ? 0.22 : 0.8) && (!game.world.navigation || Math.abs(this.path[0].y - this.pos.y) < 0.6)) this.path.shift();
       next = this.path[0];
     }
     const dx = next.x - this.pos.x, dz = next.z - this.pos.z, l = Math.hypot(dx, dz);
@@ -229,7 +246,7 @@ export class Bot {
     }
     this.perceiveT -= dt;
     if (this.perceiveT <= 0) { this.perceiveT = 0.15 + Math.random() * 0.08; this.perceive(); }
-    this.stunT -= dt; this.flashT -= dt; this.revealT -= dt; this.grenadeCD -= dt; this.reloadT -= dt;
+    this.stunT -= dt; this.flashT -= dt; this.revealT -= dt; this.grenadeCD -= dt;
     this.model.flash.visible = this.flashT > 0;
     A.recoil = damp(A.recoil, 0, 10, dt);
 
@@ -239,10 +256,22 @@ export class Bot {
     const t = this.target;
     const stunned = this.stunT > 0;
     let wantCrouch = false;
+    if (stunned && (this.coverReload.active || this.reloadT > 0)) this.coverReload.cancel(this);
+    const tactical = stunned ? null : this.coverReload.update(this, dt, desired);
+    // Check exposure/cancellation before advancing the timer: a flank on the
+    // completion frame must not grant ammunition for an interrupted reload.
+    this.updateReload(dt);
 
     if (stunned) {
       desired.set(Math.sin(game.time * 2 + this.id) * 1.2, 0, Math.cos(game.time * 1.7 + this.id) * 1.2);
       lookYaw = this.yaw + Math.sin(game.time * 3) * 0.05;
+    } else if (tactical) {
+      wantCrouch = tactical.crouch;
+      if (tactical.lookAt) {
+        const eye = this.eyePos(_a), p = tactical.lookAt;
+        lookYaw = Math.atan2(eye.x - p.x, eye.z - p.z);
+        lookPitch = Math.atan2(p.y - eye.y, Math.hypot(p.x - eye.x, p.z - eye.z));
+      }
     } else if (t && this.targetVisible && t.alive) {
       // 战斗
       const eye = this.eyePos(_a);
@@ -285,32 +314,35 @@ export class Bot {
         if (d > 8 && d < 26 && Math.random() < 0.35) this.throwGrenade(lp);
         this.grenadeCD = rand(8, 16);
       }
-      if (this.mag < this.stats.mag * 0.5 && this.reloadT <= 0) this.reload();
     } else {
       // 常规行为
-      if (this.mag < this.stats.mag && this.reloadT <= 0 && this.mag < this.stats.mag * 0.6) this.reload();
       this.behave(dt, desired);
       if (this.role === 'guard' && !this.alerted) speed = 1.6;
     }
     if (this.static) desired.set(0, 0, 0);
+    if (!wantCrouch && !this.physicsBody.canFit(this.pos, 1.7 * SOLDIER_SCALE)) wantCrouch = true;
+    this.crouchT = damp(this.crouchT, wantCrouch ? 1 : 0, 8, dt);
     // 限速
     const dl = Math.hypot(desired.x, desired.z);
     const maxS = (wantCrouch ? 2.0 : speed) * (stunned ? 0.4 : 1);
     if (dl > maxS) desired.multiplyScalar(maxS / dl);
     // 分离
-    for (const o of game.bots) {
-      if (o === this || !o.alive) continue;
-      const dx = this.pos.x - o.pos.x, dz = this.pos.z - o.pos.z, d2 = dx * dx + dz * dz;
-      if (d2 < 0.7 && d2 > 0.0001) { const d = Math.sqrt(d2); desired.x += dx / d * 1.5; desired.z += dz / d * 1.5; }
-    }
+    separateBots(this, game.bots, desired);
     const k = 1 - Math.exp(-10 * dt);
     this.vel.x += (desired.x - this.vel.x) * k;
     this.vel.z += (desired.z - this.vel.z) * k;
-    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
-    game.world.collide(this.pos, this.vel, this.radius, 1.7 * SOLDIER_SCALE);
-    const gh = game.world.groundHeight(this.pos.x, this.pos.z, this.pos.y, this.radius);
-    if (this.static) { /* 固定位置（塔楼） */ }
-    else this.pos.y = damp(this.pos.y, gh, 15, dt);
+    if (this.static) this.vel.set(0, 0, 0);
+    else this.vel.y -= 18 * dt;
+    const movement = this.physicsBody.move(this.pos,
+      { x: this.vel.x * dt, y: this.vel.y * dt, z: this.vel.z * dt }, (1.7 - 0.5 * this.crouchT) * SOLDIER_SCALE);
+    this.pos.copy(movement.position);
+    if (movement.grounded) this.vel.y = 0;
+    for (const normal of movement.normals) {
+      if (Math.abs(normal.y) < 0.5) {
+        const into = this.vel.x * normal.x + this.vel.z * normal.z;
+        if (into < 0) { this.vel.x -= into * normal.x; this.vel.z -= into * normal.z; }
+      }
+    }
     // 卡住检测
     this.stuckT += dt;
     if (this.stuckT > 1.5) {
@@ -328,7 +360,6 @@ export class Bot {
     const ad = angleDiff(this.yaw, lookYaw);
     this.yaw += clamp(ad, -turn * dt, turn * dt);
     this.pitch = damp(this.pitch, lookPitch, 8, dt);
-    this.crouchT = damp(this.crouchT, wantCrouch ? 1 : 0, 8, dt);
     // 动画
     A.speed = spd; A.phase += dt * spd * 2.2; A.crouch = this.crouchT; A.pitch = this.pitch;
     animateSoldier(this.model, A, dt);
@@ -379,12 +410,22 @@ export class Bot {
   }
 
   reload() {
+    if (this.reloadT > 0 || this.mag >= this.stats.mag) return;
     this.reloadT = this.stats.reload * 1.1;
-    this.mag = this.stats.mag;
+    this.reloadPending = true;
     this.game.audio.reload('out');
   }
+  updateReload(dt) {
+    this.reloadT = Math.max(0, this.reloadT - dt);
+    if (this.reloadPending && this.reloadT === 0) {
+      this.mag = this.stats.mag; this.reloadPending = false;
+      this.game.audio.reload('in');
+    }
+  }
+  cancelReload() { this.reloadT = 0; this.reloadPending = false; }
 
   tryFire(dt, target, dist) {
+    if (this.reloadT > 0 || this.coverReload.active) return;
     const game = this.game, st = this.stats;
     this.fireT -= dt;
     if (this.fireT > 0) return;
@@ -441,5 +482,5 @@ export class Bot {
     game.projectiles.push(new Projectile(game, 'frag', from, v, this, 2.6));
     this.anim.recoil = 1;
   }
-  dispose() { this.game.scene.remove(this.model.root); }
+  dispose() { this.physicsBody.dispose(); this.game.scene.remove(this.model.root); }
 }

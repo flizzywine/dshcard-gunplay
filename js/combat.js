@@ -56,13 +56,14 @@ function suppressNearMiss(game, shooter, o, d, trace) {
 
 // 统一的射击：返回命中信息
 export function fireHitscan(game, shooter, o, d, stats, weaponName, opts = {}) {
-  const r = traceBullet(game, shooter, o, d, opts.maxDist || 400);
+  const r = traceBullet(game, shooter, o, d, opts.maxDist || stats.bulletRange || 400);
   if (r.ent) {
     const dmg = damageAt(stats, r.t, r.part) * (opts.dmgMul || 1);
     const hpBefore = r.ent.hp;
     const killed = r.ent.takeDamage(dmg, { attacker: shooter, head: r.part === 'head', dir: d, weapon: weaponName, point: r.point });
     game.effects.blood(r.point, d, r.part === 'head');
     r.killed = killed; r.dmg = dmg;
+    r.dealt = Math.max(0, hpBefore - Math.max(0, r.ent.hp));
     if (shooter === game.player) {
       const dealt = Math.max(0, hpBefore - Math.max(0, r.ent.hp));
       const points = Math.round(dealt);
@@ -142,6 +143,7 @@ export class Projectile {
     this.mesh.castShadow = true;
     this.mesh.position.copy(this.pos);
     game.scene.add(this.mesh);
+    if (!['rocket', 'bomb'].includes(type)) this.physicsBody = game.world.physics.createProjectile(pos, vel);
     if (type === 'semtex') { this.light = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 4), new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 0.3, 0.3) })); this.light.position.y = 0.05; this.mesh.add(this.light); }
   }
   update(dt) {
@@ -159,7 +161,7 @@ export class Projectile {
         const hit = g.world.raycast(this.pos, dir, len + 0.1);
         let entHit = null;
         for (const e of g.entities) { if (e === this.owner || !e.alive || (this.owner && e.team === this.owner.team)) continue; const h = e.hitTest(this.pos, dir, len + 0.3); if (h) entHit = e; }
-        if (hit || entHit || this.pos.y < 0.05 || this.age > 6) {
+        if (hit || entHit || this.age > 6) {
           if (hit) this.pos.copy(hit.point).addScaledVector(hit.normal, 0.2);
           return this.detonate();
         }
@@ -181,38 +183,21 @@ export class Projectile {
       if (this.pos.y <= gh + 0.2) { this.pos.y = gh + 0.1; return this.detonate(); }
       return;
     }
-    if (!this.stuck) {
-      this.vel.y -= 16 * dt;
-      const sub = 3;
-      for (let i = 0; i < sub; i++) {
-        const sd = dt / sub;
-        const sp = this.vel.length();
-        if (sp < 0.01) break;
-        const dir = _q.copy(this.vel).divideScalar(sp);
-        const hit = g.world.raycast(this.pos, dir, sp * sd + 0.06);
-        if (hit) {
-          this.pos.copy(hit.point).addScaledVector(hit.normal, 0.06);
-          if (this.type === 'semtex') { this.stuck = true; this.vel.set(0, 0, 0); g.audio.click(900, 0.05, 0.3, this.pos); break; }
-          if (this.type === 'molotov') { return this.detonate(); }
-          const vn = this.vel.dot(hit.normal);
-          this.vel.addScaledVector(hit.normal, -vn * 1.4);
-          this.vel.multiplyScalar(0.55);
-          if (Math.abs(vn) > 1.5) g.audio.bounce(this.pos);
-          this.bounces++;
-        } else this.pos.addScaledVector(this.vel, sd);
-      }
-      if (this.pos.y < 0.06) {
-        this.pos.y = 0.06;
-        if (this.type === 'molotov') return this.detonate();
-        if (this.type === 'semtex') { this.stuck = true; this.vel.set(0, 0, 0); }
-        else { if (this.vel.y < -2) g.audio.bounce(this.pos); this.vel.y = Math.abs(this.vel.y) * 0.35; this.vel.x *= 0.6; this.vel.z *= 0.6; }
-      }
-      this.mesh.rotation.x += dt * this.vel.length() * 3;
-      this.mesh.rotation.z += dt * this.vel.length() * 2;
+    const previousSpeed = this.vel.length(), motion = this.physicsBody.snapshot();
+    this.pos.copy(motion.position); this.vel.copy(motion.velocity);
+    this.mesh.quaternion.copy(motion.rotation);
+    if (motion.contacts && !this.stuck) {
+      this.bounces += motion.contacts;
+      if (this.type === 'molotov') return this.detonate();
+      if (this.type === 'semtex') {
+        this.stuck = true; this.physicsBody.stop(); this.vel.set(0, 0, 0);
+        g.audio.click(900, 0.05, 0.3, this.pos);
+      } else if (previousSpeed > 1.5) g.audio.bounce(this.pos);
     }
     this.mesh.position.copy(this.pos);
     if (this.light) this.light.visible = Math.sin(this.age * 20) > 0;
     if (this.type === 'smoke' && this.fuse <= 0 && !this.smoking) {
+      this.physicsBody.stop(); this.vel.set(0, 0, 0);
       this.smoking = true; g.effects.smokeGrenade(this.pos); g.audio.click(600, 0.6, 0.3, this.pos);
       this.fuse = 16;
       return;
@@ -222,9 +207,8 @@ export class Projectile {
   }
   detonate() {
     const g = this.game;
-    this.alive = false;
-    g.scene.remove(this.mesh);
-    const wn = { frag: '破片手雷', semtex: '粘性炸弹', molotov: '燃烧瓶', rocket: 'RPG-7', bomb: '集束空袭' }[this.type];
+    this.remove();
+    const wn = { frag: '破片手雷', semtex: '粘性炸弹', molotov: '燃烧瓶', rocket: 'AT4 火箭筒', bomb: '集束空袭' }[this.type];
     if (this.type === 'frag' || this.type === 'semtex') explode(g, this.pos, 7, 160, this.owner, wn);
     else if (this.type === 'rocket') explode(g, this.pos, 6, 170, this.owner, wn, { scale: 1.2 });
     else if (this.type === 'bomb') explode(g, this.pos, 8, 180, this.owner, wn, { scale: 1.3 });
@@ -248,5 +232,5 @@ export class Projectile {
       g.effects.flashLight(center.clone().setY(1), 0xff7020, 20, 7, 14);
     }
   }
-  remove() { this.alive = false; this.game.scene.remove(this.mesh); }
+  remove() { this.alive = false; this.physicsBody?.dispose(); this.game.scene.remove(this.mesh); }
 }

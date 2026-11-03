@@ -2,3 +2,9 @@ node_modules/
 dist/
 .playwright-cli/
 output/
+
+# Locally converted game assets stay in the working copy, outside the public archive.
+/assets/maps/*
+!/assets/maps/*.md
+/assets/delta-weapons/*
+!/assets/delta-weapons/README.md

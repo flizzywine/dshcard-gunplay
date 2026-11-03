@@ -1,44 +1,22 @@
-// 菜单系统：主菜单、战役简报、多人大厅、配装、枪匠、设置、暂停、结算
+// 菜单系统：主菜单、多人大厅、固定武器、设置、暂停、结算
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { WEAPONS, PRIMARY_ORDER, SECONDARY_ORDER, SLOT_NAMES, ATTACHMENTS, CAMOS, computeStats, statBars, PERKS, LETHALS, TACTICALS, KILLSTREAKS, MP_MAPS, MP_MODES, attachmentAllowed, findAttachment } from './data.js';
+import { WEAPONS, MP_MAPS, MP_MODES } from './data.js';
+import { HERO_WEAPONS, WEAPON_ROLES } from './arsenal.js';
 import { buildGun } from './gunmodel.js';
 import { createSoldierModel, animateSoldier } from './soldier.js';
 import { mat, camoSwatch } from './materials.js';
 import { damp } from './util.js';
 
 const DIFF_NAMES = ['新兵', '正规军', '老兵'];
-const MAX_ATT = 5;
 
 // 地图缩略插画（内联SVG）
 const MAP_ART = {
-  jinqu: `<svg viewBox="0 0 300 150" preserveAspectRatio="none"><rect width="300" height="150" fill="#b2a181"/><path d="M0 54L24 29 56 43 85 21 112 50 300 29V0H0Z" fill="#8c816b"/><path d="M0 82H140V57H300M164 0V150" fill="none" stroke="#6c6b60" stroke-width="12"/><g fill="#d9c8a3" stroke="#857960" stroke-width="2"><path d="M69 103h28v18H69zM100 78h21v19h-21zM100 120h29v18h-29zM105 22h32v25h-32zM183 21h49v26h-49zM189 83h47v13h-47zM238 88h15v42h-15zM194 124h38v14h-38zM135 80h18v25h-18zM134 114h22v20h-22z"/></g><path d="M16 115L47 99 59 132H9Z" fill="#8a7e64"/><g fill="#e8f1ca" font-family="sans-serif" font-weight="bold" font-size="12"><text x="75" y="99">A</text><text x="106" y="17">B1</text><text x="134" y="77">B2</text><text x="194" y="17">C1</text><text x="203" y="113">C2</text></g></svg>`,
-  dune: `<svg viewBox="0 0 300 150" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="gd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f2c98a"/><stop offset="1" stop-color="#b3773d"/></linearGradient></defs><rect width="300" height="150" fill="url(#gd)"/><circle cx="230" cy="40" r="18" fill="#fff4d6" opacity=".9"/><path d="M0 110 L20 110 20 80 60 80 60 95 75 95 75 70 95 70 95 60 105 60 105 70 120 70 120 100 150 100 150 75 190 75 190 90 210 90 210 65 235 65 235 90 260 90 260 78 300 78 300 150 0 150Z" fill="#6b4520"/><path d="M85 60 Q100 40 115 60Z" fill="#6b4520"/><rect x="98" y="30" width="4" height="30" fill="#6b4520"/></svg>`,
-  frost: `<svg viewBox="0 0 300 150" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="gf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dfe7ee"/><stop offset="1" stop-color="#8395a6"/></linearGradient></defs><rect width="300" height="150" fill="url(#gf)"/><path d="M0 70 L50 40 90 65 140 30 200 70 250 45 300 65 300 150 0 150Z" fill="#b8c5d2"/><rect x="30" y="80" width="40" height="45" fill="#46566a"/><ellipse cx="50" cy="80" rx="20" ry="5" fill="#56677b"/><rect x="90" y="70" width="50" height="55" fill="#3b4a5c"/><ellipse cx="115" cy="70" rx="25" ry="6" fill="#4d5d70"/><rect x="170" y="45" width="6" height="80" fill="#3b4a5c"/><rect x="190" y="90" width="100" height="35" fill="#34414f"/><rect x="0" y="125" width="300" height="25" fill="#eef3f7"/></svg>`,
-  neon: `<svg viewBox="0 0 300 150" preserveAspectRatio="xMidYMid slice"><rect width="300" height="150" fill="#0d0f2a"/><rect x="10" y="30" width="50" height="120" fill="#16183a"/><rect x="70" y="10" width="45" height="140" fill="#1b1d45"/><rect x="125" y="50" width="60" height="100" fill="#15173a"/><rect x="195" y="20" width="40" height="130" fill="#1d2050"/><rect x="245" y="45" width="55" height="105" fill="#14163a"/><rect x="20" y="60" width="30" height="6" fill="#ff3fa4"/><rect x="80" y="40" width="25" height="5" fill="#3ff4ff"/><rect x="135" y="70" width="40" height="6" fill="#ffdd3f"/><rect x="205" y="55" width="20" height="30" fill="none" stroke="#ff3fa4" stroke-width="2"/><rect x="255" y="80" width="35" height="5" fill="#3ff4ff"/><rect x="0" y="130" width="300" height="20" fill="#20234f" opacity=".8"/><g stroke="#8fa0ff" stroke-width=".6" opacity=".35"><line x1="30" y1="0" x2="25" y2="20"/><line x1="120" y1="10" x2="115" y2="30"/><line x1="220" y1="0" x2="215" y2="20"/><line x1="270" y1="30" x2="265" y2="50"/><line x1="160" y1="20" x2="155" y2="40"/></g></svg>`,
-  yard: `<svg viewBox="0 0 300 150" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="gy" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb05a"/><stop offset=".6" stop-color="#c8554a"/><stop offset="1" stop-color="#4a2437"/></linearGradient></defs><rect width="300" height="150" fill="url(#gy)"/><circle cx="80" cy="85" r="26" fill="#ffe0a0" opacity=".8"/><path d="M180 20 L185 20 185 125 180 125Z M150 22 L280 22 280 27 150 27Z M240 27 L242 60 238 60Z" fill="#2c1824"/><rect x="0" y="95" width="70" height="30" fill="#6a2a24"/><rect x="75" y="100" width="70" height="25" fill="#24425e"/><rect x="20" y="70" width="70" height="25" fill="#2d4a2d"/><rect x="150" y="90" width="80" height="35" fill="#8a4a1e"/><rect x="235" y="98" width="65" height="27" fill="#3a3e44"/><rect x="0" y="125" width="300" height="25" fill="#2a1a22"/></svg>`,
+  cracked: `<img src="./assets/maps/cracked-radar.svg" alt="烬区通路俯视图" style="width:100%;height:100%;object-fit:contain;background:#383a37">`,
+  karkand: `<img src="./assets/maps/karkand-radar.svg" alt="Karkand 通路俯视图" style="width:100%;height:100%;object-fit:contain;background:#383a37">`,
+  dust2: `<img src="./assets/maps/dust2-radar.svg" alt="Dust II 通路俯视图" style="width:100%;height:100%;object-fit:contain;background:#383a37">`,
 };
 
-const FX_LABEL = {
-  recoilV: ['垂直后坐力', -1], recoilH: ['水平后坐力', -1], ads: ['开镜时间', -1], range: ['有效射程', 1], mobility: ['移动速度', 1],
-  mag: ['弹匣容量', 1], reload: ['换弹时间', -1], hip: ['腰射扩散', -1], sprintFire: ['冲刺后射击延迟', -1],
-};
-function fxList(fx) {
-  const out = [];
-  for (const k in fx) {
-    const v = fx[k];
-    if (FX_LABEL[k]) {
-      const [n, dir] = FX_LABEL[k];
-      const pct = Math.round((v - 1) * 100);
-      const good = pct * dir > 0;
-      out.push(`<span style="color:${good ? '#8fe06a' : '#ff6a5a'}">${good ? '▲' : '▼'} ${n} ${pct > 0 ? '+' : ''}${pct}%</span>`);
-    } else if (k === 'suppressed') out.push('<span style="color:#8fe06a">▲ 雷达隐身</span>');
-    else if (k === 'flashHide') out.push('<span style="color:#8fe06a">▲ 隐藏枪口火光</span>');
-    else if (k === 'zoom') out.push(`<span style="color:#ccc">● 放大倍率 ${v}x</span>`);
-    else if (k === 'laser') out.push('<span style="color:#ccc">● 可见激光</span>');
-  }
-  return out.join('');
-}
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 export class Menu {
@@ -49,7 +27,7 @@ export class Menu {
     this.camTarget = { pos: new THREE.Vector3(-0.3, 1.45, 4.2), look: new THREE.Vector3(0.6, 1.15, 0) };
     this.camLook = this.camTarget.look.clone();
     this.gunRotY = -Math.PI / 2; this.gunRotX = 0; this.gunSpin = true;
-    this.lobby = { mode: 'breakthrough', map: 'jinqu', side: 0, diff: 1, allies: 5, enemies: 6, time: 15 };
+    this.lobby = { mode: 'breakthrough', map: 'cracked', diff: 1, allies: 5, enemies: 6, time: 15 };
     this.selClass = game.profile.selClass || 0;
     this.buildScene();
     this.el.addEventListener('pointerdown', () => game.audio.init());
@@ -57,7 +35,6 @@ export class Menu {
     this.el.addEventListener('click', e => { if (e.target.closest('.mbtn,.btn,.pick,.cls,.slotc,.gs-att,.gs-slot,.mode,.mapc,.diff,.seg div,.camo')) game.audio.ui('click'); });
     window.addEventListener('keydown', e => {
       if (e.code === 'Escape' && game.paused && this.screen === 'pause' && performance.now() - this.pauseAt > 300) this.resume();
-      else if (e.code === 'Escape' && this.screen === 'classSelect') this.hideClassSelect();
     });
     // 枪匠拖拽旋转
     let drag = null;
@@ -219,14 +196,14 @@ export class Menu {
       <div class="menu-left">
         <div class="menu-title">现代战线</div>
         <div class="menu-sub">MODERN FRONTLINE</div>
-        <div class="mbtn" data-a="mp"><div class="ico">⚔</div><div><div class="mt">多人对战</div><div class="md">烬区攻防 · 团队死斗 · 占领 · 自由混战（AI）</div></div></div>
-        <div class="mbtn" data-a="loadout"><div class="ico">⚙</div><div><div class="mt">武器装备</div><div class="md">自定义配装 · 枪匠 · 技能 · 连杀奖励</div></div></div>
+        <div class="mbtn" data-a="mp"><div class="ico">⚔</div><div><div class="mt">多人对战</div><div class="md">烬区攻防 · Dust II / Karkand 团队死斗（AI）</div></div></div>
+        <div class="mbtn" data-a="loadout"><div class="ico">⚙</div><div><div class="mt">武器装备</div><div class="md">腾龙 / M870 / AWM / AT4</div></div></div>
         <div class="mbtn" data-a="settings"><div class="ico">☰</div><div><div class="mt">设置</div><div class="md">画面 · 操作 · 音频</div></div></div>
       </div>
       ${this.playerCard()}
       <div style="position:absolute;right:40px;bottom:30px;text-align:right;font-size:12px;color:#777;line-height:1.9">
-        <div><span class="kbd">WASD</span>移动 <span class="kbd">Shift</span>冲刺 <span class="kbd">C</span>蹲/滑铲 <span class="kbd">空格</span>跳跃 <span class="kbd">R</span>换弹 <span class="kbd">V</span>近战</div>
-        <div><span class="kbd">G</span>致命装备 <span class="kbd">Q</span>战术装备 <span class="kbd">F</span>互动 <span class="kbd">3/4/5</span>连杀奖励 <span class="kbd">Tab</span>记分板</div>
+        <div><span class="kbd">WASD</span>移动 <span class="kbd">Shift</span>冲刺 <span class="kbd">C</span>蹲/滑铲 <span class="kbd">空格</span>跳跃 <span class="kbd">R</span>换弹 <span class="kbd">1–4</span>切换武器</div>
+        <div> <span class="kbd">Tab</span>记分板</div>
         <div style="color:#555;margin-top:6px">现代战线 v1.0 · 程序化实时渲染 · 本作为原创致敬作品</div>
       </div>`, 'dim', 'main');
     this.on(r, '[data-a]', el => {
@@ -256,216 +233,43 @@ export class Menu {
           <div class="lobby-col" style="flex:1;max-width:460px">
             <div class="panel"><div class="opts">
               <div>AI 难度</div>${seg('diff', [0, 1, 2], DIFF_NAMES)}
-              <div class="bt-only">攻防阵营</div><div class="bt-only">${seg('side', [0, 1], ['进攻方', '防守方'])}</div>
               <div class="tm-only">队友数量</div><div class="tm-only">${seg('allies', [3, 5], ['3', '5'])}</div>
               <div>敌人数量</div>${seg('enemies', [4, 6, 8], ['4', '6', '8'])}
               <div>时间限制</div>${seg('time', [5, 10, 15], ['5 分钟', '10 分钟', '15 分钟'])}
               <div>胜利条件</div><div id="limitTxt" style="color:var(--acc)"></div>
             </div></div>
             <div class="panel">
-              <div style="font-size:12px;color:#888;letter-spacing:3px;margin-bottom:8px">当前配装</div>
+              <div style="font-size:12px;color:#888;letter-spacing:3px;margin-bottom:8px">主角武器</div>
               <div style="display:flex;justify-content:space-between;align-items:center">
-                <div><div style="font-size:20px;font-weight:800">${esc(cls.name)}</div><div style="font-size:12px;color:#aaa;margin-top:4px">${WEAPONS[cls.primary].name} · ${WEAPONS[cls.secondary].name} · ${cls.perks.map(id => this.perk(id).name).join(' / ')}</div></div>
-                <button class="btn small ghost" data-a="loadout">编辑</button>
+                <div><div style="font-size:20px;font-weight:800">${esc(cls.name)}</div><div style="font-size:12px;color:#aaa;margin-top:4px">腾龙 · M870 · AWM · AT4</div></div>
+                <button class="btn small ghost" data-a="loadout">查看</button>
               </div>
-              <div style="font-size:12px;color:#888;margin-top:10px">连杀奖励：${P.streaks.map(id => KILLSTREAKS.find(k => k.id === id)).sort((a, b) => a.kills - b.kills).map(k => `${k.icon} ${k.name}(${k.kills})`).join('　')}</div>
             </div>
             <div class="lobby-foot" style="margin-top:auto"><button class="btn ghost" data-a="back">返回</button><button class="btn" data-a="go">开始对局</button></div>
           </div>
         </div>
       </div>`, 'solid', 'lobby');
     const upd = () => {
-      const lim = L.mode === 'dom' ? '先达到 200 分' : L.mode === 'ffa' ? '先达到 25 击杀' : '先达到 50 击杀';
-      r.querySelector('#limitTxt').textContent = L.mode === 'breakthrough' ? '180 进攻兵力；突破区域 +80。全部突破获胜，兵力或时间耗尽则防守方获胜。' : `${lim}，或时间结束时领先`;
-      r.querySelectorAll('.tm-only').forEach(e => e.style.opacity = L.mode === 'ffa' ? 0.3 : 1);
-      r.querySelectorAll('.bt-only').forEach(e => e.style.display = L.mode === 'breakthrough' ? '' : 'none');
-      r.querySelectorAll('.mode').forEach(d => d.classList.toggle('sel', d.dataset.m === L.mode));
+      L.mode=L.map==='cracked'?'breakthrough':'tdm';
+      r.querySelector('#limitTxt').textContent = L.mode==='breakthrough'?'攻占 A → B1/B2 → C1/C2；进攻方 100 增援，推进补充 40':'先达到 50 击杀，或时间结束时领先';
+      r.querySelectorAll('.mode').forEach(d => {d.classList.toggle('sel', d.dataset.m === L.mode);d.style.display=d.dataset.m===L.mode?'':'none';});
       r.querySelectorAll('.mapc').forEach(d => d.classList.toggle('sel', d.dataset.map === L.map));
     };
     upd();
-    this.on(r, '.mode', el => { L.mode = el.dataset.m; if (L.mode === 'breakthrough') L.map = 'jinqu'; upd(); });
-    this.on(r, '.mapc', el => { L.map = el.dataset.map; if (L.map === 'jinqu') L.mode = 'breakthrough'; else if (L.mode === 'breakthrough') L.mode = 'tdm'; upd(); });
+    this.on(r, '.mapc', el => { L.map = el.dataset.map; upd(); });
     r.querySelectorAll('.seg').forEach(sg => sg.querySelectorAll('div').forEach(d => d.addEventListener('click', () => { L[sg.dataset.k] = +d.dataset.v; sg.querySelectorAll('div').forEach(x => x.classList.toggle('sel', x === d)); })));
     this.on(r, '[data-a=back]', () => this.showMain());
     this.on(r, '[data-a=loadout]', () => this.showLoadouts('lobby'));
     this.on(r, '[data-a=go]', () => {
-      const scoreLimit = L.mode === 'dom' ? 200 : L.mode === 'ffa' ? 25 : 50;
+      const scoreLimit = 50;
       this.showLoadingOverlay('正在匹配对局…');
-      setTimeout(() => this.game.startGame('mp', { mode: L.mode, map: L.map, side: L.side ? 'B' : 'A', diff: L.diff, allies: L.mode === 'ffa' ? 0 : L.allies, enemies: L.enemies, scoreLimit, timeLimit: L.time }), 600);
+      setTimeout(() => this.game.startGame('mp', { mode: L.mode, map: L.map, diff: L.diff, allies: L.allies, enemies: L.enemies, scoreLimit, timeLimit: L.time }), 600);
     });
   }
-  perk(id) { for (const col of PERKS) for (const p of col) if (p.id === id) return p; return { name: id, desc: '', icon: '' }; }
-
-  // ---------------- 配装 ----------------
   showLoadouts(from) {
-    this.loadoutFrom = from || this.loadoutFrom || 'main';
     this.setCam('loadout');
-    const P = this.game.profile;
-    const ci = this.selClass;
-    const c = P.classes[ci];
-    this.setSoldier(c);
-    const attNames = (id, att) => Object.entries(att || {}).map(([s, a]) => (findAttachment(s, a) || {}).name).filter(Boolean).join(' · ') || '无配件';
-    const L = LETHALS.find(x => x.id === c.lethal), T = TACTICALS.find(x => x.id === c.tactical);
-    const streaks = P.streaks.map(id => KILLSTREAKS.find(k => k.id === id)).sort((a, b) => a.kills - b.kills);
-    const r = this.render(`
-      <div class="loadout">
-        <div class="hdr">武器装备<small>自定义配装 · ${P.selClass === ci ? '当前使用中' : '未装备'}</small></div>
-        <div style="display:flex;gap:24px;margin-top:26px;flex:1;min-height:0">
-          <div class="classes">${P.classes.map((k, i) => `<div class="cls ${i === ci ? 'sel' : ''}" data-i="${i}">${esc(k.name)}${i === P.selClass ? ' <span style="color:var(--acc)">●</span>' : ''}<small>${WEAPONS[k.primary].name} · ${WEAPONS[k.secondary].name}</small></div>`).join('')}
-            <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px">
-              <button class="btn small" data-a="equip" ${P.selClass === ci ? 'disabled style="opacity:.5"' : ''}>设为当前配装</button>
-              <button class="btn small ghost" data-a="rename">重命名</button>
-            </div>
-          </div>
-          <div class="cls-detail" style="max-width:640px">
-            <div class="slotc" data-s="primary"><div class="sl">主武器 · ${WEAPONS[c.primary].cls}</div><div class="sv">${WEAPONS[c.primary].name}</div><div class="ss">${attNames(c.primary, c.patt)}</div><div style="margin-top:10px;display:flex;gap:8px"><button class="btn small" data-g="primary">枪匠</button><button class="btn small ghost" data-w="primary">更换武器</button></div></div>
-            <div class="slotc" data-s="secondary"><div class="sl">副武器 · ${WEAPONS[c.secondary].cls}</div><div class="sv">${WEAPONS[c.secondary].name}</div><div class="ss">${attNames(c.secondary, c.satt)}</div><div style="margin-top:10px;display:flex;gap:8px"><button class="btn small" data-g="secondary">枪匠</button><button class="btn small ghost" data-w="secondary">更换武器</button></div></div>
-            <div class="slotc" data-p="lethal"><div class="sl">致命装备</div><div class="sv">${L ? L.name : '无'}</div><div class="ss">${L ? L.desc : ''}</div></div>
-            <div class="slotc" data-p="tactical"><div class="sl">战术装备</div><div class="sv">${T ? T.name : '无'}</div><div class="ss">${T ? T.desc : ''}</div></div>
-            <div class="slotc wide" data-p="perks"><div class="sl">技能 PERK</div><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">${c.perks.map(id => { const p = this.perk(id); return `<div class="perkpill">${p.icon} ${p.name}</div>`; }).join('')}</div></div>
-            <div class="slotc wide" data-p="streaks"><div class="sl">连杀奖励（全配装通用）</div><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">${streaks.map(k => `<div class="perkpill" style="background:rgba(255,180,0,.12);border-color:rgba(255,180,0,.4)">${k.icon} ${k.name} · ${k.kills}杀</div>`).join('')}</div></div>
-          </div>
-        </div>
-        <button class="btn ghost back" data-a="back">返回</button>
-      </div>`, 'dim', 'loadout');
-    this.on(r, '.cls', el => { this.selClass = +el.dataset.i; this.showLoadouts(); });
-    this.on(r, '[data-a=equip]', () => { P.selClass = ci; this.game.saveProfile(); this.showLoadouts(); });
-    this.on(r, '[data-a=rename]', () => { const n = prompt('配装名称', c.name); if (n && n.trim()) { c.name = n.trim().slice(0, 12); this.game.saveProfile(); this.showLoadouts(); } });
-    this.on(r, '[data-g]', (el, e) => { e.stopPropagation(); this.showGunsmith(ci, el.dataset.g); });
-    this.on(r, '[data-w]', (el, e) => { e.stopPropagation(); this.pickWeapon(ci, el.dataset.w); });
-    this.on(r, '.slotc[data-s]', el => this.pickWeapon(ci, el.dataset.s));
-    this.on(r, '[data-p=lethal]', () => this.pickSimple(ci, 'lethal'));
-    this.on(r, '[data-p=tactical]', () => this.pickSimple(ci, 'tactical'));
-    this.on(r, '[data-p=perks]', () => this.pickPerks(ci));
-    this.on(r, '[data-p=streaks]', () => this.pickStreaks());
-    this.on(r, '[data-a=back]', () => { if (this.loadoutFrom === 'lobby') this.showLobby(); else if (this.loadoutFrom === 'pause') this.showPause(); else this.showMain(); });
-  }
-  picker(title, sub, inner, onBack) {
-    const scr = this.el.firstChild;
-    const d = document.createElement('div');
-    d.className = 'picker';
-    d.innerHTML = `<div class="hdr">${title}<small>${sub}</small></div>${inner}<button class="btn ghost back" data-a="pback">返回</button>`;
-    scr.appendChild(d);
-    d.querySelector('[data-a=pback]').addEventListener('click', () => { d.remove(); onBack && onBack(); });
-    return d;
-  }
-  miniBars(id) {
-    const b = statBars(computeStats(id, {}));
-    return ['伤害', '射速', '射程', '精准度', '机动性'].map(k => `<div class="stat" style="margin-top:6px">${k}<div class="bar"><div class="b0" style="width:${b[k]}%"></div></div></div>`).join('');
-  }
-  pickWeapon(ci, slot) {
-    const c = this.game.profile.classes[ci];
-    const overkill = c.perks.includes('overkill');
-    const list = slot === 'primary' ? PRIMARY_ORDER : overkill ? [...SECONDARY_ORDER, ...PRIMARY_ORDER.filter(x => x !== c.primary)] : SECONDARY_ORDER;
-    const cur = slot === 'primary' ? c.primary : c.secondary;
-    const d = this.picker(slot === 'primary' ? '选择主武器' : '选择副武器', overkill && slot === 'secondary' ? '火力过载：可携带第二把主武器' : '选择后可进入枪匠改装', `<div class="pick-grid">${list.map(id => { const w = WEAPONS[id]; return `<div class="pick ${id === cur ? 'sel' : ''}" data-id="${id}"><div class="cat">${w.cls}</div><b>${w.name}</b><span>伤害 ${w.dmg[0]} · 射速 ${w.rpm} · 弹匣 ${w.mag}</span>${this.miniBars(id)}</div>`; }).join('')}</div>`);
-    this.on(d, '.pick', el => {
-      const id = el.dataset.id;
-      const k = slot === 'primary' ? 'patt' : 'satt';
-      if (slot === 'primary') c.primary = id; else c.secondary = id;
-      // 保留兼容配件
-      const old = c[k] || {}; const nw = {};
-      for (const s in old) { const a = findAttachment(s, old[s]); if (a && attachmentAllowed(id, s, a)) nw[s] = old[s]; }
-      c[k] = nw;
-      this.game.saveProfile();
-      this.showLoadouts();
-    });
-  }
-  pickSimple(ci, kind) {
-    const c = this.game.profile.classes[ci];
-    const list = kind === 'lethal' ? LETHALS : TACTICALS;
-    const d = this.picker(kind === 'lethal' ? '致命装备' : '战术装备', '按 ' + (kind === 'lethal' ? 'G' : 'Q') + ' 使用', `<div class="pick-grid">${list.map(x => `<div class="pick ${c[kind] === x.id ? 'sel' : ''}" data-id="${x.id}"><b>${x.name}</b><span>${x.desc}</span><span style="color:var(--acc)">携带数量 ×${x.count}</span></div>`).join('')}</div>`);
-    this.on(d, '.pick', el => { c[kind] = el.dataset.id; this.game.saveProfile(); this.showLoadouts(); });
-  }
-  pickPerks(ci) {
-    const c = this.game.profile.classes[ci];
-    const sel = [...c.perks];
-    const d = this.picker('技能选择', '每个栏位选择一项技能', `<div class="perk-cols">${PERKS.map((col, i) => `<div class="perk-col"><div style="font-size:12px;color:var(--acc);letter-spacing:4px">技能 ${i + 1}</div>${col.map(p => `<div class="pick ${sel[i] === p.id ? 'sel' : ''}" data-c="${i}" data-id="${p.id}"><b>${p.icon} ${p.name}</b><span>${p.desc}</span></div>`).join('')}</div>`).join('')}</div><div style="margin-top:20px"><button class="btn" data-a="ok">确认</button></div>`);
-    this.on(d, '.pick', el => { const i = +el.dataset.c; sel[i] = el.dataset.id; d.querySelectorAll(`.pick[data-c="${i}"]`).forEach(x => x.classList.toggle('sel', x === el)); });
-    this.on(d, '[data-a=ok]', () => {
-      c.perks = sel;
-      if (!sel.includes('overkill') && !SECONDARY_ORDER.includes(c.secondary)) { c.secondary = 'm1911'; c.satt = {}; }
-      this.game.saveProfile(); this.showLoadouts();
-    });
-  }
-  pickStreaks() {
-    const P = this.game.profile;
-    const sel = new Set(P.streaks);
-    const d = this.picker('连杀奖励', '选择 3 项 · 连续击杀敌人而不阵亡即可获得', `<div class="pick-grid">${KILLSTREAKS.map(k => `<div class="pick ${sel.has(k.id) ? 'sel' : ''}" data-id="${k.id}"><div class="cat">${k.kills} 连杀</div><b>${k.icon} ${k.name}</b><span>${k.desc}</span></div>`).join('')}</div><div style="margin-top:20px;display:flex;gap:14px;align-items:center"><button class="btn" data-a="ok">确认</button><span id="skc" style="color:#aaa;font-size:13px"></span></div>`);
-    const upd = () => { d.querySelector('#skc').textContent = `已选择 ${sel.size}/3`; };
-    upd();
-    this.on(d, '.pick', el => {
-      const id = el.dataset.id;
-      if (sel.has(id)) sel.delete(id); else if (sel.size < 3) sel.add(id);
-      el.classList.toggle('sel', sel.has(id)); upd();
-    });
-    this.on(d, '[data-a=ok]', () => { if (sel.size !== 3) { d.querySelector('#skc').innerHTML = '<span style="color:#ff6a5a">必须选择 3 项连杀奖励</span>'; return; } P.streaks = [...sel]; this.game.saveProfile(); this.showLoadouts(); });
-  }
-
-  // ---------------- 枪匠 ----------------
-  showGunsmith(ci, which) {
-    this.gsCtx = { ci, which };
-    this.gsSlot = this.gsSlot && this.gsCtx.which === which ? this.gsSlot : null;
-    this.setCam('gunsmith');
-    const c = this.game.profile.classes[ci];
-    const id = which === 'primary' ? c.primary : c.secondary;
-    const w = WEAPONS[id];
-    const attKey = which === 'primary' ? 'patt' : 'satt', camoKey = which === 'primary' ? 'pcamo' : 'scamo';
-    const att = c[attKey] = c[attKey] || {};
-    c[camoKey] = c[camoKey] || 'none';
-    if (!this.gsSlot) this.gsSlot = w.slots[0] || 'camo';
-    this.showGun(id, att, c[camoKey]);
-    const count = Object.keys(att).length;
-    const slotHtml = [...w.slots, 'camo'].map(s => {
-      const cur = s === 'camo' ? (CAMOS.find(x => x.id === c[camoKey]) || CAMOS[0]).name : att[s] ? (findAttachment(s, att[s]) || {}).name : null;
-      const anyAllowed = s === 'camo' || (ATTACHMENTS[s] || []).some(a => attachmentAllowed(id, s, a));
-      return `<div class="gs-slot ${s === this.gsSlot ? 'sel' : ''} ${anyAllowed ? '' : 'dis'}" data-s="${s}"><div class="k">${s === 'camo' ? '迷彩' : SLOT_NAMES[s]}</div><div class="v ${cur ? '' : 'none'}">${cur || '无'}</div></div>`;
-    }).join('');
-    let right = '';
-    if (this.gsSlot === 'camo') {
-      right = `<div class="gs-att" style="cursor:default"><b>迷彩涂装</b><div class="gs-camos">${CAMOS.map(cm => { const sw = cm.id === 'none' ? null : camoSwatch(cm.id); return `<div class="camo ${c[camoKey] === cm.id ? 'sel' : ''}" data-c="${cm.id}" title="${cm.name}" style="background:${sw ? `url(${sw}) center/cover` : '#26282a'}"></div>`; }).join('')}</div><div style="font-size:12px;color:#999;margin-top:8px">${(CAMOS.find(x => x.id === c[camoKey]) || CAMOS[0]).name}</div></div>`;
-    } else {
-      const list = (ATTACHMENTS[this.gsSlot] || []).filter(a => attachmentAllowed(id, this.gsSlot, a));
-      right = `<div class="gs-att ${!att[this.gsSlot] ? 'sel' : ''}" data-id=""><b>无</b><div class="fx"><span style="color:#999">移除该栏位配件</span></div></div>` +
-        list.map(a => `<div class="gs-att ${att[this.gsSlot] === a.id ? 'sel' : ''}" data-id="${a.id}"><b>${a.name}</b><div class="fx">${fxList(a.fx)}</div>${a.desc ? `<div style="font-size:11px;color:#888;margin-top:4px">${a.desc}</div>` : ''}</div>`).join('');
-    }
-    const r = this.render(`
-      <div class="gunsmith">
-        <div class="gs-left">${slotHtml}</div>
-        <div class="gs-title"><div class="c">枪匠 · ${w.cls}</div><div class="n">${w.name}</div><div class="cnt">配件 ${count}/${MAX_ATT}　·　拖拽旋转 / 滚轮缩放</div></div>
-        <div class="gs-right">${right}<div id="gsMsg" style="color:#ff6a5a;font-size:13px;min-height:18px"></div></div>
-        <div class="gs-stats" id="gsStats"></div>
-        <div class="gs-foot"><button class="btn ghost small" data-a="reset">清空配件</button><button class="btn" data-a="done">完成</button></div>
-      </div>`, '', 'gunsmith');
-    r.style.background = 'radial-gradient(ellipse at 50% 45%, transparent 30%, rgba(0,0,0,.55) 100%)';
-    const statsFor = a => statBars(computeStats(id, a));
-    const drawStats = (preview) => {
-      const base = statsFor(att), pv = preview ? statsFor(preview) : base;
-      const st = computeStats(id, preview || att);
-      r.querySelector('#gsStats').innerHTML = ['精准度', '伤害', '射程', '射速', '机动性', '操控性'].map(k => {
-        const b = base[k], p = pv[k], lo = Math.min(b, p), dlt = p - b;
-        return `<div class="stat">${k}<span style="float:right;color:${dlt > 0.5 ? '#8fe06a' : dlt < -0.5 ? '#ff6a5a' : '#888'}">${Math.round(p)}${Math.abs(dlt) > 0.5 ? ` (${dlt > 0 ? '+' : ''}${Math.round(dlt)})` : ''}</span><div class="bar"><div class="b0" style="width:${lo}%"></div>${Math.abs(dlt) > 0.5 ? `<div class="bd" style="left:${lo}%;width:${Math.abs(dlt)}%;background:${dlt > 0 ? '#8fe06a' : '#ff6a5a'}"></div>` : ''}</div></div>`;
-      }).join('') + `<div class="stat" style="grid-column:span 2;color:#999;display:flex;justify-content:space-between"><span>弹匣 <b style="color:#fff">${st.mag}</b></span><span>射速 <b style="color:#fff">${st.rpm}</b> RPM</span><span>换弹 <b style="color:#fff">${st.reload.toFixed(2)}</b>s</span><span>开镜 <b style="color:#fff">${Math.round(st.ads * 1000)}</b>ms</span><span>射程 <b style="color:#fff">${Math.round(st.rangeFar)}</b>m</span></div>`;
-    };
-    drawStats(null);
-    this.on(r, '.gs-slot', el => { this.gsSlot = el.dataset.s; this.showGunsmith(ci, which); });
-    r.querySelectorAll('.gs-att[data-id]').forEach(el => {
-      el.addEventListener('mouseenter', () => { const p = Object.assign({}, att); if (el.dataset.id) p[this.gsSlot] = el.dataset.id; else delete p[this.gsSlot]; drawStats(p); });
-      el.addEventListener('mouseleave', () => drawStats(null));
-      el.addEventListener('click', () => {
-        const aid = el.dataset.id;
-        if (!aid) delete att[this.gsSlot];
-        else {
-          if (!att[this.gsSlot] && Object.keys(att).length >= MAX_ATT) { r.querySelector('#gsMsg').textContent = `最多装备 ${MAX_ATT} 个配件，请先移除其他配件`; return; }
-          att[this.gsSlot] = aid;
-        }
-        this.game.saveProfile();
-        this.showGunsmith(ci, which);
-      });
-    });
-    this.on(r, '.camo', el => { c[camoKey] = el.dataset.c; this.game.saveProfile(); this.showGunsmith(ci, which); });
-    this.on(r, '[data-a=reset]', () => { c[attKey] = {}; this.game.saveProfile(); this.showGunsmith(ci, which); });
-    this.on(r, '[data-a=done]', () => { this.gsSlot = null; this.showLoadouts(); });
+    const r = this.render(`<div class="loadout"><div class="hdr">武器装备<small>腾龙 / M870 / AWM / AT4 · 数字 1–4 或滚轮切换</small></div><div class="pick-grid" style="margin-top:30px">${HERO_WEAPONS.map((id,i) => `<div class="panel"><div style="font-size:24px">${i+1} · ${WEAPON_ROLES[id]}</div><p>${WEAPONS[id].name}</p><p>弹匣 ${WEAPONS[id].mag} · 备用 ${WEAPONS[id].reserve}</p></div>`).join('')}</div><button class="btn ghost" data-a="back">返回</button></div>`, 'solid', 'arsenal');
+    this.on(r, '[data-a=back]', () => from === 'lobby' ? this.showLobby() : this.showMain());
   }
 
   // ---------------- 设置 ----------------
@@ -499,10 +303,8 @@ export class Menu {
           <div><b>WASD</b>移动</div><div><b>鼠标左/右键</b>射击 / 瞄准</div>
           <div><b>Shift</b>战术冲刺</div><div><b>C / Ctrl</b>蹲伏 · 冲刺中滑铲</div>
           <div><b>Z</b>趴下 / 起身</div><div><b>空格</b>起身 / 跳跃</div><div><b>R</b>换弹</div>
-          <div><b>1 / 2 / 滚轮</b>切换武器</div><div><b>V / 鼠标侧键</b>近战</div>
-          <div><b>G</b>致命装备（按住烹饪）</div><div><b>Q</b>战术装备</div>
-          <div><b>F</b>互动 / 拾取武器</div>
-          <div><b>3 / 4 / 5</b>连杀奖励</div><div><b>Tab</b>记分板</div>
+          <div><b>1 / 2</b>步枪 / 霰弹枪</div><div><b>3 / 4</b>精确步枪 / 重炮</div>
+          <div><b>滚轮</b>循环切换四把武器</div><div><b>Tab</b>记分板</div>
         </div>
         <div style="margin-top:24px;display:flex;gap:12px"><button class="btn" data-a="back">返回</button><button class="btn ghost small" data-a="resetp">重置存档</button></div>
       </div>`, inGame ? 'solid' : 'dim', 'settings');
@@ -531,7 +333,7 @@ export class Menu {
     });
     this.on(r, '[data-adjust]', el => setSensitivity(el.dataset.adjust, S[el.dataset.adjust] * +el.dataset.factor));
     this.on(r, '[data-sens]', el => setSensitivity('sens', +el.dataset.sens));
-    this.on(r, '[data-a=reset-sens]', () => setSensitivity('sens', 3));
+    this.on(r, '[data-a=reset-sens]', () => setSensitivity('sens', 0.8));
     this.on(r, '[data-a=test-sens]', () => this.resume());
     r.querySelectorAll('.seg[data-t]').forEach(sg => sg.querySelectorAll('div').forEach(d => d.addEventListener('click', () => {
       const k = sg.dataset.t; S[k] = d.dataset.v === '1';
@@ -545,7 +347,7 @@ export class Menu {
       this.game.saveSettings(); this.game.applyQuality();
     }));
     this.on(r, '[data-a=back]', () => { if (inGame) this.showPause(); else this.showMain(); });
-    this.on(r, '[data-a=resetp]', () => { if (confirm('确定要重置所有配装与经验值吗？')) { localStorage.removeItem('mf_profile'); location.reload(); } });
+    this.on(r, '[data-a=resetp]', () => { if (confirm('确定要重置经验值吗？')) { localStorage.removeItem('mf_profile'); location.reload(); } });
   }
 
   // ---------------- 暂停 ----------------
@@ -556,7 +358,6 @@ export class Menu {
       <div class="pause">
         <div class="hdr" style="margin-bottom:30px">已暂停<small>多人对战</small></div>
         <div class="mbtn" data-a="resume"><div class="ico">▶</div><div class="mt">继续游戏</div></div>
-        <div class="mbtn" data-a="class"><div class="ico">⚙</div><div class="mt">更换配装</div></div>
         <div class="mbtn" data-a="restart"><div class="ico">⟲</div><div class="mt">重新开始对局</div></div>
         <div class="mbtn" data-a="sensitivity"><div class="ico">◎</div><div class="mt">灵敏度调试</div></div>
         <div class="mbtn" data-a="settings"><div class="ico">☰</div><div class="mt">设置</div></div>
@@ -564,7 +365,6 @@ export class Menu {
         <div style="margin-top:20px;font-size:12px;color:#777">按 Esc 继续</div>
       </div>`, 'solid', 'pause');
     this.on(r, '[data-a=resume]', () => this.resume());
-    this.on(r, '[data-a=class]', () => this.showClassSelect(true));
     this.on(r, '[data-a=restart]', () => { const cfg = g.mode.cfg; g.paused = false; g.startGame('mp', cfg); });
     this.on(r, '[data-a=sensitivity]', () => {
       this.showSettings('pause');
@@ -578,34 +378,6 @@ export class Menu {
     const g = this.game;
     g.pause(false);
     setTimeout(() => { if (g.state === 'play' && !g.paused && document.pointerLockElement !== g.canvas) document.getElementById('clickToPlay').classList.remove('hidden'); }, 400);
-  }
-
-  // ---------------- 局内更换配装 ----------------
-  showClassSelect(fromPause) {
-    const g = this.game, P = g.profile;
-    this.overlayOpen = true;
-    if (document.pointerLockElement) document.exitPointerLock();
-    const r = this.render(`
-      <div style="margin:auto;width:760px">
-        <div class="hdr" style="margin-bottom:18px">选择配装<small>将在下次部署时生效</small></div>
-        <div class="pick-grid" style="grid-template-columns:1fr">${P.classes.map((c, i) => `<div class="pick ${i === P.selClass ? 'sel' : ''}" data-i="${i}" style="display:flex;justify-content:space-between;align-items:center"><div><b>${esc(c.name)}</b><span>${WEAPONS[c.primary].name}${Object.keys(c.patt || {}).length ? ' (' + Object.keys(c.patt).length + '配件)' : ''} · ${WEAPONS[c.secondary].name} · ${(LETHALS.find(x => x.id === c.lethal) || {}).name || ''} · ${(TACTICALS.find(x => x.id === c.tactical) || {}).name || ''}</span></div><div style="font-size:12px;color:#aaa;text-align:right">${c.perks.map(id => this.perk(id).icon + ' ' + this.perk(id).name).join('<br>')}</div></div>`).join('')}</div>
-        <div style="margin-top:16px"><button class="btn ghost" data-a="close">取消</button></div>
-      </div>`, 'solid', 'classSelect');
-    this.classFromPause = !!fromPause;
-    this.on(r, '.pick', el => {
-      const i = +el.dataset.i;
-      if (g.mode && g.mode.applyClass) g.mode.applyClass(i);
-      this.selClass = i;
-      g.hud.popup(`配装「${P.classes[i].name}」将在下次部署时生效`, '#d4f24a');
-      this.hideClassSelect();
-    });
-    this.on(r, '[data-a=close]', () => this.hideClassSelect());
-  }
-  hideClassSelect() {
-    if (this.screen !== 'classSelect') return;
-    this.overlayOpen = false;
-    if (this.classFromPause && this.game.paused) { this.showPause(); return; }
-    this.hide();
   }
 
   // ---------------- 结算 ----------------

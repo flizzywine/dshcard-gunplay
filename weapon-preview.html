@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Unvanquished 步枪 · 原生动画预览</title>
+  <script type="importmap">{"imports":{"three":"./lib/three.module.js"}}</script>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#192321;color:#e6eee7;font:14px system-ui,"Microsoft YaHei",sans-serif}canvas{display:block;width:100%;height:100%}#viewport{position:fixed;inset:0}header{position:fixed;top:28px;left:32px;right:32px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none}h1{font-size:24px;letter-spacing:1px;margin:7px 0}p{margin:8px 0;color:#b7c4bd;line-height:1.6}.eyebrow{color:#b5d38e;font-size:11px;letter-spacing:3px}.views{display:flex;gap:6px;pointer-events:auto}button,select{font:inherit;color:#cdd9d0;background:#202c29;border:1px solid #58675d;border-radius:7px;padding:10px 15px;cursor:pointer}button:hover{border-color:#c8e2a8}button.active{color:#172219;background:#d3e6b5;border-color:#d3e6b5}#panel{position:fixed;bottom:30px;left:32px;right:32px;max-width:720px;background:#17231fec;border:1px solid #4c5d50;border-radius:12px;padding:20px 22px;box-shadow:0 16px 50px #0004}#actions{display:flex;gap:7px;flex-wrap:wrap}.row{display:flex;align-items:center;gap:14px;margin-top:16px;flex-wrap:wrap}#timeline{flex:1;min-width:130px;accent-color:#c4dc9f}#time{font:12px ui-monospace,monospace;color:#cbd9ce;min-width:148px}label{display:flex;gap:7px;align-items:center;color:#bac7bd}input[type=checkbox]{accent-color:#c4dc9f}#hint{position:fixed;right:32px;bottom:34px;text-align:right;font-size:12px;color:#c8d4cc;line-height:1.8;max-width:320px}a{color:#d0e1b7}#status{position:fixed;top:45%;left:50%;transform:translate(-50%,-50%);background:#17231fe8;padding:22px 30px;border-radius:10px;text-align:center}.crosshair{position:fixed;left:50%;top:50%;width:3px;height:3px;background:#d5e8bb;border-radius:50%;box-shadow:0 0 4px #0008;pointer-events:none}#stats{font-size:11px;color:#8faaa0;letter-spacing:.3px}#viewHint{margin-top:12px;color:#aebfb2;font-size:12px}@media(max-width:900px){header{left:18px;right:18px;top:18px;gap:15px}h1{font-size:18px}.views button{padding:8px}#panel{left:18px;right:18px;bottom:18px}#hint{display:none}header p{font-size:12px}#panel .row{gap:10px}}
+  </style>
+</head>
+<body>
+  <div id="viewport"></div><div class="crosshair" id="crosshair"></div>
+  <header><div><div class="eyebrow">UNVANQUISHED / WEAPON STUDY 01</div><h1>步枪与原配手臂</h1><p>播放原作者的骨骼动画，观察手、枪与弹匣的配合。</p><div id="stats">正在载入原始资源…</div></div><div class="views"><button data-view="first" class="active">第一人称</button><button data-view="orbit">模型观察</button></div></header>
+  <div id="status">正在加载步枪、手臂和动画…</div>
+  <section id="panel" aria-label="动画控制">
+    <div id="actions"><button data-action="reload" class="active">换弹 R</button><button data-action="fire">开火 F</button><button data-action="idle">待机</button><button data-action="raise">举枪</button><button data-action="lower">收枪</button></div>
+    <div class="row"><button id="pause">暂停</button><input id="timeline" aria-label="动画进度" type="range" min="0" max="1" step="0.001" value="0"><output id="time">0.00 / 2.30 秒</output></div>
+    <div class="row"><label><input id="loop" type="checkbox" checked>循环当前动作</label><label>播放速度<select id="speed" aria-label="播放速度"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1× 原速</option></select></label><label>视角<input id="fov" aria-label="视角" type="range" min="50" max="95" value="75" style="width:90px;accent-color:#c4dc9f"><span id="fovValue">75°</span></label></div>
+    <div id="viewHint">R 换弹 · F 开火 · 空格暂停 · 拖动进度条逐帧观察</div>
+  </section>
+  <aside id="hint">独立预览 · 尚未替换游戏武器<br><a href="https://github.com/UnvanquishedAssets/res-weapons_src.dpkdir" target="_blank" rel="noreferrer">Unvanquished 官方资源</a> · <a href="./assets/unvanquished-rifle/README.md" target="_blank">署名与 CC BY-SA 3.0 许可</a></aside>
+  <script type="module" src="./js/weapon-preview.js"></script>
+</body>
+</html>

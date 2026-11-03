@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { mat } from './materials.js';
-import { rayAABB, BinaryHeap, TileNoise, mulberry32, clamp } from './util.js';
+import { BinaryHeap, TileNoise, mulberry32, clamp } from './util.js';
+import { PhysicsWorld } from './physics.js';
 
 function boxGeo(w, h, d, s) {
   const g = new THREE.BoxGeometry(w, h, d);
@@ -60,6 +61,7 @@ export class World {
     geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     geo.setIndex(indices); geo.computeVertexNormals();
+    this.physicsTerrain = { vertices: new Float32Array(positions), indices: new Uint32Array(indices), surface: { mat: this.def.surface || 'sand' } };
     this.mesh(geo, material, 0, 0, 0, { cast: false });
     // Use the very same triangles as the rendered surface for feet and rays.
     this.terrainHeight = (x, z) => {
@@ -68,21 +70,6 @@ export class World {
       const h0 = heights[a], h1 = heights[a + 1], h2 = heights[a + n + 1], h3 = heights[a + n + 2];
       return u + v <= 1 ? h0 + u * (h1 - h0) + v * (h2 - h0) : h3 + (1 - u) * (h2 - h3) + (1 - v) * (h1 - h3);
     };
-  }
-
-  terrainHit(o, d, maxT) {
-    if (!this.terrainHeight || maxT <= 0) return null;
-    const steps = Math.max(1, Math.ceil(maxT / 0.75));
-    for (let i = 0; i <= steps; i++) {
-      const t = maxT * i / steps, x = o.x + d.x * t, z = o.z + d.z * t;
-      if (o.y + d.y * t > this.terrainHeight(x, z)) continue;
-      let lo = Math.max(0, t - maxT / steps), hi = t;
-      for (let j = 0; j < 9; j++) { const mid = (lo + hi) / 2; if (o.y + d.y * mid > this.terrainHeight(o.x + d.x * mid, o.z + d.z * mid)) lo = mid; else hi = mid; }
-      const p = o.clone().addScaledVector(d, hi), e = 0.2;
-      const normal = new THREE.Vector3(this.terrainHeight(p.x - e, p.z) - this.terrainHeight(p.x + e, p.z), 2 * e, this.terrainHeight(p.x, p.z - e) - this.terrainHeight(p.x, p.z + e)).normalize();
-      return { t: hi, point: p, normal, box: { mat: this.def.surface || 'sand' } };
-    }
-    return null;
   }
 
   box(cx, y0, cz, w, h, d, matName = 'concrete', opt = {}) {
@@ -539,6 +526,11 @@ export class World {
       this.root.add(mesh);
     }
     this.geoLists.clear();
+    this.physics = new PhysicsWorld({ boxes: this.boxes, terrain: this.physicsTerrain, meshes: this.physicsMeshes });
+    if (this.importedGeometry) for (const points of Object.values(this.spawns)) for (const p of points) {
+      const hit = this.physics.raycast(p, { x: 0, y: -1, z: 0 }, 4);
+      if (hit) p.y = hit.point.y + 0.03;
+    }
     this.buildGrid();
     this.buildTopDown();
   }
@@ -553,66 +545,22 @@ export class World {
   }
 
   // ---------- 碰撞查询 ----------
-  raycast(o, d, maxT, ignorePen = false) {
-    const terrain = this.terrainHit(o, d, maxT);
-    let best = terrain ? terrain.t : maxT, hit = null;
-    const bx = this.boxes;
-    for (let i = 0; i < bx.length; i++) {
-      const b = bx[i];
-      const t = rayAABB(o.x, o.y, o.z, d.x, d.y, d.z, b, best);
-      if (t >= 0 && t < best) { best = t; hit = b; }
-    }
-    if (!hit) return terrain;
-    const px = o.x + d.x * best, py = o.y + d.y * best, pz = o.z + d.z * best;
-    const e = 0.002;
-    let nx = 0, ny = 0, nz = 0;
-    if (Math.abs(px - hit.x0) < e) nx = -1; else if (Math.abs(px - hit.x1) < e) nx = 1;
-    else if (Math.abs(py - hit.y0) < e) ny = -1; else if (Math.abs(py - hit.y1) < e) ny = 1;
-    else if (Math.abs(pz - hit.z0) < e) nz = -1; else nz = 1;
-    return { t: best, point: new THREE.Vector3(px, py, pz), normal: new THREE.Vector3(nx, ny, nz), box: hit };
+  raycast(o, d, maxT) {
+    const hit = this.physics.raycast(o, d, maxT);
+    return hit ? { t: hit.t, point: new THREE.Vector3().copy(hit.point), normal: new THREE.Vector3().copy(hit.normal), box: hit.surface } : null;
   }
   // 两点之间是否有遮挡
   lineBlocked(a, b) {
     const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
     const L = Math.hypot(dx, dy, dz);
     if (L < 0.01) return false;
-    const ix = dx / L, iy = dy / L, iz = dz / L;
-    if (this.terrainHit(a, new THREE.Vector3(ix, iy, iz), L - 0.05)) return true;
-    const bx = this.boxes;
-    for (let i = 0; i < bx.length; i++) {
-      if (rayAABB(a.x, a.y, a.z, ix, iy, iz, bx[i], L - 0.05) >= 0) return true;
-    }
-    return false;
-  }
-  // 圆柱体与方块碰撞，修改 pos，返回是否着地
-  collide(pos, vel, radius, height, step = 0.45) {
-    const bx = this.boxes;
-    for (let iter = 0; iter < 2; iter++) {
-      for (let i = 0; i < bx.length; i++) {
-        const b = bx[i];
-        if (b.y1 <= pos.y + step || b.y0 >= pos.y + height) continue;
-        if (pos.x + radius < b.x0 || pos.x - radius > b.x1 || pos.z + radius < b.z0 || pos.z - radius > b.z1) continue;
-        const cx = clamp(pos.x, b.x0, b.x1), cz = clamp(pos.z, b.z0, b.z1);
-        let dx = pos.x - cx, dz = pos.z - cz;
-        const d2 = dx * dx + dz * dz;
-        if (d2 > radius * radius) continue;
-        if (d2 > 1e-8) {
-          const d = Math.sqrt(d2), push = radius - d;
-          dx /= d; dz /= d;
-          pos.x += dx * push; pos.z += dz * push;
-          const vn = vel.x * dx + vel.z * dz;
-          if (vn < 0) { vel.x -= vn * dx; vel.z -= vn * dz; }
-        } else {
-          // 中心在盒内
-          const l = pos.x - b.x0, r = b.x1 - pos.x, n = pos.z - b.z0, s = b.z1 - pos.z;
-          const m = Math.min(l, r, n, s);
-          if (m === l) pos.x = b.x0 - radius; else if (m === r) pos.x = b.x1 + radius;
-          else if (m === n) pos.z = b.z0 - radius; else pos.z = b.z1 + radius;
-        }
-      }
-    }
+    return !!this.physics.raycast(a, { x: dx / L, y: dy / L, z: dz / L }, L - 0.05);
   }
   groundHeight(x, z, feetY, radius, step = 0.45) {
+    if (this.importedGeometry) {
+      const top = feetY + step, hit = this.physics.raycast({ x, y: top, z }, { x: 0, y: -1, z: 0 }, 100);
+      return hit ? hit.point.y : feetY;
+    }
     let g = this.terrainHeight ? this.terrainHeight(x, z) : 0;
     const bx = this.boxes;
     const r = radius * 0.7;
@@ -625,6 +573,7 @@ export class World {
     return g;
   }
   ceilingHeight(x, z, feetY, radius) {
+    if (this.importedGeometry) return this.physics.raycast({ x, y: feetY + 0.5, z }, { x: 0, y: 1, z: 0 }, 100)?.point.y ?? Infinity;
     let c = Infinity;
     const r = radius * 0.7;
     for (const b of this.boxes) {
@@ -643,6 +592,11 @@ export class World {
     const cs = this.cs = 1;
     const n = this.gn = Math.ceil(this.def.size / cs);
     this.grid = new Uint8Array(n * n);
+    if (this.navigation) {
+      this.grid.fill(1);
+      for (const p of this.navigation.nodes) { const [x, z] = this.cellOf(p[0], p[2]); if (x >= 0 && z >= 0 && x < n && z < n) this.grid[z * n + x] = 0; }
+      return;
+    }
     const inf = 0.4;
     for (const b of this.boxes) {
       if (!this.terrainHeight && (b.y1 <= 0.45 || b.y0 >= 1.7)) continue;
@@ -676,6 +630,7 @@ export class World {
     return null;
   }
   randomWalkable(cx = 0, cz = 0, rad = 1e9) {
+    if (this.navigation) return this.navigation.randomPoint(cx, cz, rad);
     for (let i = 0; i < 60; i++) {
       const x = cx + (Math.random() * 2 - 1) * Math.min(rad, this.half - 2), z = cz + (Math.random() * 2 - 1) * Math.min(rad, this.half - 2);
       const [ix, iz] = this.cellOf(x, z);
@@ -697,6 +652,7 @@ export class World {
     }
   }
   findPath(from, to) {
+    if (this.navigation) return this.navigation.findPath(from, to);
     const n = this.gn;
     let s = this.cellOf(from.x, from.z), e = this.cellOf(to.x, to.z);
     s = this.nearestWalkable(s[0], s[1]); e = this.nearestWalkable(e[0], e[1]);
@@ -750,6 +706,7 @@ export class World {
 
   // ---------- 小地图 ----------
   buildTopDown() {
+    if (this.topDown) return;
     const N = 512, cv = document.createElement('canvas'); cv.width = cv.height = N;
     const ctx = cv.getContext('2d');
     ctx.fillStyle = 'rgba(30,34,30,0.9)'; ctx.fillRect(0, 0, N, N);
@@ -772,8 +729,11 @@ export class World {
   }
 
   dispose() {
+    this.physics?.dispose();
     this.root.traverse(o => {
+      if (o.isInstancedMesh) o.dispose();
       if (o.geometry) o.geometry.dispose();
+      if (o.userData.ownedMaterial) o.material.dispose();
       if (o.userData.ownedTexture) { o.userData.ownedTexture.dispose(); o.material.dispose(); }
     });
     this.scene.remove(this.root);

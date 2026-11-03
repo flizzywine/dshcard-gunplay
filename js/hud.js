@@ -1,6 +1,5 @@
 // HUD 显示
 import * as THREE from 'three';
-import { KILLSTREAKS } from './data.js';
 import { fmtTime, clamp } from './util.js';
 
 const $ = id => document.getElementById(id);
@@ -17,6 +16,7 @@ export class HUD {
     this.announceT = 0;
     this.buildCompass();
     this.fpsAcc = 0; this.fpsN = 0;
+    this.damageReadout=document.createElement('div');this.damageReadout.id='damageReadout';this.damageReadout.hidden=true;this.el.appendChild(this.damageReadout);this.damageT=0;
   }
   show(v) { this.el.classList.toggle('hidden', !v); }
   buildCompass() {
@@ -32,11 +32,12 @@ export class HUD {
     strip.innerHTML = html;
   }
   reset() {
+    this.damageReadout.hidden=true;this.damageT=0;
     if (this.combatLines) { for (const entry of this.combatLines.values()) clearTimeout(entry.timer); this.combatLines.clear(); }
     $('killfeed').innerHTML = ''; $('popups').innerHTML = ''; $('subtitles').innerHTML = ''; $('objective').innerHTML = '';
     $('markers').innerHTML = ''; $('dmgDirs').innerHTML = ''; this.dmgDirs = []; this.subQueue = []; this.subT = 0;
     $('fade').style.opacity = 0; $('flashOverlay').style.opacity = 0; this.flashT = 0;
-    $('announce').style.opacity = 0; $('scorebar').innerHTML = ''; $('streaks').innerHTML = '';
+    $('announce').style.opacity = 0; $('scorebar').innerHTML = '';
     this.markerEls = {};
   }
   hitmarker(kill, head) {
@@ -45,6 +46,10 @@ export class HUD {
     h.classList.toggle('head', !!head && !kill);
     h.style.opacity = 1; this.hitT = kill ? 0.35 : 0.18;
     h.style.transform = `scale(${kill ? 1.3 : 1})`;
+  }
+  damageHit(amount,target){
+    this.damageReadout.hidden=false;this.damageT=1.1;
+    this.damageReadout.innerHTML=`命中 ${Math.round(amount)} 伤害<small>${target.alive?`敌人生命 ${Math.ceil(target.hp)} / ${target.maxHp||100}`:'目标已击倒'}</small>`;
   }
   flash(t) { this.flashT = t; this.flashMax = t; }
   damageFrom(pos) {
@@ -60,7 +65,7 @@ export class HUD {
   }
   killfeed(killer, victim, weapon, head) {
     const kf = $('killfeed');
-    const cls = e => !e ? '' : e.isPlayer ? 'me' : this.game.mode && this.game.mode.ffa ? 'B' : (e.team === this.game.player.team ? 'A' : 'B');
+    const cls = e => !e ? '' : e.isPlayer ? 'me' : (e.team === this.game.player.team ? 'A' : 'B');
     const d = document.createElement('div'); d.className = 'kf';
     const kn = killer && killer !== victim ? `<span class="${cls(killer)}">${killer.name}</span>` : '';
     d.innerHTML = `${kn}<span class="w">${weapon || '击杀'}${head ? ' ✹' : ''}</span><span class="${cls(victim)}">${victim.name}</span>`;
@@ -87,7 +92,7 @@ export class HUD {
       entry = { el, points: 0, timer: null }; this.combatLines.set(label, entry);
     }
     entry.points += points;
-    entry.el.textContent = `${label} +${entry.points}`;
+    entry.el.textContent = `${label} +${entry.points}${label==='压制'?' 得分':''}`;
     clearTimeout(entry.timer);
     entry.timer = setTimeout(() => { entry.el.remove(); this.combatLines.delete(label); }, 1200);
   }
@@ -114,18 +119,10 @@ export class HUD {
   }
   fade(v, dur = 1) { const f = $('fade'); f.style.transition = `opacity ${dur}s`; f.style.opacity = v; }
   scorebar(html) { $('scorebar').innerHTML = html; }
-  streaks(list, kills) {
-    const el = $('streaks');
-    if (!list) { el.innerHTML = ''; return; }
-    el.innerHTML = list.map((s, i) => {
-      const def = KILLSTREAKS.find(k => k.id === s.id);
-      return `<div class="stk ${s.ready ? 'ready' : ''}"><span>${s.ready ? `[${i + 3}] ` : ''}${def.name}</span><span class="k">${s.ready ? '就绪' : s.cost}</span><span class="ic">${def.icon}</span></div>`;
-    }).join('') + `<div class="stk"><span>连杀</span><span class="k">${kills}</span></div>`;
-  }
-
   update(dt) {
     const game = this.game, pl = game.player;
     if (!pl) return;
+    this.damageT-=dt;if(this.damageT<=0)this.damageReadout.hidden=true;
     // FPS
     this.fpsAcc += dt; this.fpsN++;
     if (this.fpsAcc > 0.5) { $('fps').textContent = game.settings.showFps ? Math.round(this.fpsN / this.fpsAcc) + ' FPS' : ''; this.fpsAcc = 0; this.fpsN = 0; }
@@ -133,7 +130,7 @@ export class HUD {
     // 准星
     const ch = $('crosshair');
     const scoped = game.scopeState;
-    const hideCross = ws.adsT > 0.4 || pl.sprinting || !pl.alive || (w && w.stats.type === 'sniper');
+    const hideCross = (ws.adsT > 0.4 && w?.info.optic !== 'reticle') || pl.sprinting || !pl.alive || (w && w.stats.type === 'sniper');
     ch.style.display = hideCross ? 'none' : 'block';
     if (w && !hideCross) {
       const spread = ws.currentSpread();
@@ -170,14 +167,10 @@ export class HUD {
     $('alertEdge').style.opacity = this.alertT > 0 ? 1 : 0;
     // 弹药
     if (w) {
-      $('weaponName').textContent = w.stats.name + (w.stats.suppressed ? ' · 消音' : '');
+      $('weaponName').textContent = `${pl.ws.cur + 1} · ${w.stats.cls} · ${w.stats.name}`;
       const m = $('ammoMag'); m.textContent = w.mag; m.classList.toggle('low', w.mag <= Math.ceil(w.stats.mag * 0.25));
       $('ammoRes').textContent = '/ ' + w.reserve;
-      let eq = '';
-      if (pl.lethal) eq += `<span>[G] ${pl.lethal.name}<b>×${pl.lethal.count}</b></span>`;
-      if (pl.tactical) eq += `<span>[Q] ${pl.tactical.name}<b>×${pl.tactical.count}</b></span>`;
-      if (game.mode && game.mode.nvgAvailable) eq += `<span>[N] 夜视仪</span>`;
-      $('equipRow').innerHTML = eq;
+      $('equipRow').textContent = '1 腾龙 · 2 M870 · 3 AWM · 4 AT4';
     }
     // 罗盘
     const deg = ((-pl.yaw * 180 / Math.PI) % 360 + 360) % 360;
@@ -261,22 +254,12 @@ export class HUD {
       else { ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill(); }
       ctx.restore();
     };
-    // 目标点
     const mode = game.mode;
-    if (mode && mode.flags) for (const f of mode.flags) {
-      const px = (f.pos.x - pl.pos.x) * scale, pz = (f.pos.z - pl.pos.z) * scale;
-      ctx.save(); ctx.translate(px, pz); ctx.rotate(-pl.yaw);
-      ctx.fillStyle = f.owner === pl.team ? '#4fb4ff' : f.owner ? '#ff4a3d' : '#fff';
-      ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.beginPath(); ctx.arc(0, 0, 9, 0, 7); ctx.strokeStyle = ctx.fillStyle; ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillText(f.name, 0, 1);
-      ctx.restore();
-    }
     if (mode && mode.minimapMarkers) for (const m of mode.minimapMarkers()) dot(m.x, m.z, m.color || '#ffb400', 5);
     const uav = mode && mode.uavActive && mode.uavActive(pl.team);
     for (const e of game.entities) {
       if (e === pl || !e.alive || !e.pos) continue;
-      if (e.team === pl.team && !(mode && mode.ffa)) dot(e.pos.x, e.pos.z, '#4fb4ff', 3.5, true, e.yaw || 0);
+      if (e.team === pl.team) dot(e.pos.x, e.pos.z, '#4fb4ff', 3.5, true, e.yaw || 0);
       else {
         const show = uav || (e.revealT > 0);
         if (show) dot(e.pos.x, e.pos.z, '#ff3b30', 4);
@@ -299,34 +282,36 @@ export class HUD {
       this.tacticalCanvas = document.createElement('canvas'); this.tacticalCanvas.width = 1000; this.tacticalCanvas.height = 760;
       this.tacticalEl.appendChild(this.tacticalCanvas); $('hud').appendChild(this.tacticalEl);
     }
-    const show = !!(w.sectors && game.input.keys.KeyM && !game.paused);
+    const show = !!(w.navigation && game.input.keys.KeyM && !game.paused);
     this.tacticalEl.style.display = show ? 'flex' : 'none';
     if (!show) return;
-    const ctx = this.tacticalCanvas.getContext('2d'), scale = 3.35;
-    const [x0, z0, x1, z1] = w.def.extents, sx = 55, sy = 85;
-    ctx.fillStyle = '#17221f'; ctx.fillRect(0, 0, 1000, 760);
-    ctx.fillStyle = '#e2e8d6'; ctx.font = 'bold 26px sans-serif'; ctx.fillText('烬区 / 战术地图', 40, 42);
-    ctx.font = '14px sans-serif'; ctx.fillStyle = '#a9baac'; ctx.fillText('N ↑    A 岩下村 → B1 / B2 → C1 / C2     ·     松开 M 返回', 40, 66);
-    ctx.drawImage(w.topDown, (x0 + w.half) * w.topK, (z0 + w.half) * w.topK, (x1 - x0) * w.topK, (z1 - z0) * w.topK, sx, sy, (x1 - x0) * scale, (z1 - z0) * scale);
-    const px = x => sx + (x - x0) * scale, pz = z => sy + (z - z0) * scale;
-    for (let i = 0; i < (mode.breakthrough?.sectors || w.sectors).length; i++) {
-      const sector = (mode.breakthrough?.sectors || w.sectors)[i];
-      for (const f of sector.objectives) {
-        const active = mode.breakthrough && mode.breakthrough.stage === i;
-        const completed = mode.breakthrough && mode.breakthrough.stage > i;
-        ctx.strokeStyle = completed ? '#60b5f0' : active ? '#edb967' : '#b7b8a6';
-        ctx.fillStyle = active ? 'rgba(237,185,103,.22)' : 'rgba(20,30,25,.4)'; ctx.lineWidth = active ? 3 : 1;
-        ctx.beginPath(); ctx.arc(px(f.x), pz(f.z), f.radius * scale, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        ctx.textAlign = 'center'; ctx.fillStyle = '#ffffff'; ctx.font = 'bold 18px sans-serif'; ctx.fillText(f.name, px(f.x), pz(f.z) + 6);
-        ctx.font = '13px sans-serif'; ctx.fillText(f.title, px(f.x), pz(f.z) + f.radius * scale + 19);
-      }
+    this.drawImportedTacticalMap();
+  }
+
+  drawImportedTacticalMap() {
+    const game = this.game, w = game.world, mode=game.mode, ctx = this.tacticalCanvas.getContext('2d');
+    ctx.textAlign = 'left'; ctx.fillStyle = '#202622'; ctx.fillRect(0, 0, 1000, 760);
+    ctx.fillStyle = '#e4dcc8'; ctx.font = 'bold 26px sans-serif'; ctx.fillText(w.def.name + ' / 战术地图', 40, 42);
+    ctx.font = '14px sans-serif'; ctx.fillText('N ↑    ' + (w.def.sourceSubtitle || 'CS: Source 经典布局') + '    ·    松开 M 返回', 40, 66);
+    const size = 640, sx = 180, sy = 85, k = size / w.def.size;
+    ctx.drawImage(w.topDown, sx, sy, size, size);
+    const x = p => sx + (p.x + w.half) * k, z = p => sy + (p.z + w.half) * k;
+    const labels = w.def.landmarkLabels || { A: 'A 点', B: 'B 点', mid: '中门', long: 'A 大道', short: 'A 小道', tunnels: 'B 隧道' };
+    if(mode.control)for(const p of mode.activeSector.points){ctx.beginPath();ctx.arc(x(p.pos),z(p.pos),p.radius*k,0,Math.PI*2);ctx.strokeStyle=p.captured?'#63c9f0':'#ffad70';ctx.lineWidth=2;ctx.stroke();}
+    ctx.textAlign = 'center'; ctx.font = 'bold 16px sans-serif';
+    for (const [name, label] of Object.entries(labels)) {
+      const p = w.points[name]; if (!p) continue;
+      ctx.fillStyle = '#282c25'; ctx.fillRect(x(p) - 32, z(p) - 15, 64, 22);
+      const sector=mode.control?.sectors.findIndex(s=>s.points.some(p=>p.id===name));
+      ctx.fillStyle = sector>mode.control?.index?'#888c87':'#f7d384'; ctx.fillText(label, x(p), z(p) + 1);
     }
     for (const e of game.entities) {
       if (!e.alive || !e.pos || e.team !== game.player.team) continue;
-      ctx.fillStyle = e.isPlayer ? '#e1f58e' : '#60b5f0'; ctx.beginPath(); ctx.arc(px(e.pos.x), pz(e.pos.z), e.isPlayer ? 6 : 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = e.isPlayer ? '#e1f58e' : '#60b5f0';
+      ctx.beginPath(); ctx.arc(x(e.pos), z(e.pos), e.isPlayer ? 6 : 3, 0, Math.PI * 2); ctx.fill();
     }
-    ctx.textAlign = 'left'; ctx.font = '16px sans-serif'; ctx.fillStyle = '#d8dfca';
-    ctx.fillText('西侧高地 / 岩下村     ·     营地围墙 / 贫民窟屋顶     ·     仓库双墙 / 办公区三路入口', 40, 729);
+    ctx.textAlign = 'left';
+    if(mode.control){ctx.font='16px sans-serif';ctx.fillStyle='#f7d384';ctx.fillText(`当前进攻 ${mode.activeSector.label} 区 · 增援 ${mode.control.tickets} · A → B1/B2 → C1/C2`,40,748);}
   }
 
   showScoreboard(v) {

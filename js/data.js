@@ -2,46 +2,11 @@
 
 export const WEAPONS = {
   m4: {
-    name: 'M4A1', cls: '突击步枪', type: 'ar', slot: 'primary',
-    dmg: [28, 21], range: [28, 55], rpm: 800, mag: 30, reserve: 150, reload: 2.1, ads: 0.24,
-    recoil: [0.9, 0.45], spread: 3.2, mobility: 0.95, fire: 'auto', headMul: 1.45, sprintFire: 0.22,
+    name: '腾龙突击步枪', cls: '突击步枪', type: 'ar', slot: 'primary',
+    dmg: [34, 26], range: [75, 220], rpm: 800, mag: 30, reserve: 150, reload: 2.1, ads: 0.24, zoom: 1.4, bulletRange: 650,
+    recoil: [0.9, 0.45], spread: 3.2, mobility: 0.95, fire: 'auto', headMul: 1.6, sprintFire: 0.22,
     sound: 'rifle', model: { recv: 0.28, barrel: 0.28, hand: 0.26, stock: 'm4', mag: 'straight', color: 'black', grip: 'ar' },
     slots: ['muzzle', 'barrel', 'laser', 'optic', 'stock', 'under', 'mag', 'rear'],
-  },
-  ak: {
-    name: 'AK-47', cls: '突击步枪', type: 'ar', slot: 'primary',
-    dmg: [36, 26], range: [30, 60], rpm: 600, mag: 30, reserve: 150, reload: 2.4, ads: 0.27,
-    recoil: [1.35, 0.8], spread: 3.6, mobility: 0.93, fire: 'auto', headMul: 1.4, sprintFire: 0.25,
-    sound: 'rifle_heavy', model: { recv: 0.3, barrel: 0.3, hand: 0.22, stock: 'ak', mag: 'curved', color: 'wood', grip: 'ak' },
-    slots: ['muzzle', 'barrel', 'laser', 'optic', 'stock', 'under', 'mag', 'rear'],
-  },
-  scar: {
-    name: 'SCAR-H', cls: '突击步枪', type: 'ar', slot: 'primary',
-    dmg: [40, 30], range: [35, 70], rpm: 560, mag: 20, reserve: 120, reload: 2.3, ads: 0.29,
-    recoil: [1.5, 0.55], spread: 3.6, mobility: 0.92, fire: 'auto', headMul: 1.4, sprintFire: 0.26,
-    sound: 'rifle_heavy', model: { recv: 0.32, barrel: 0.26, hand: 0.28, stock: 'scar', mag: 'straight', color: 'tan', grip: 'ar' },
-    slots: ['muzzle', 'barrel', 'laser', 'optic', 'stock', 'under', 'mag', 'rear'],
-  },
-  mp5: {
-    name: 'MP5', cls: '冲锋枪', type: 'smg', slot: 'primary',
-    dmg: [26, 16], range: [12, 30], rpm: 850, mag: 30, reserve: 180, reload: 1.9, ads: 0.18,
-    recoil: [0.65, 0.5], spread: 2.4, mobility: 1.05, fire: 'auto', headMul: 1.3, sprintFire: 0.14,
-    sound: 'smg', model: { recv: 0.22, barrel: 0.12, hand: 0.16, stock: 'mp5', mag: 'curved_small', color: 'black', grip: 'ar' },
-    slots: ['muzzle', 'barrel', 'laser', 'optic', 'stock', 'under', 'mag', 'rear'],
-  },
-  vector: {
-    name: 'VECTOR .45', cls: '冲锋枪', type: 'smg', slot: 'primary',
-    dmg: [24, 14], range: [10, 25], rpm: 1100, mag: 25, reserve: 175, reload: 1.8, ads: 0.17,
-    recoil: [0.55, 0.6], spread: 2.4, mobility: 1.06, fire: 'auto', headMul: 1.3, sprintFire: 0.13,
-    sound: 'smg', model: { recv: 0.24, barrel: 0.1, hand: 0.14, stock: 'm4', mag: 'pistol_long', color: 'tan', grip: 'ar' },
-    slots: ['muzzle', 'barrel', 'laser', 'optic', 'stock', 'under', 'mag', 'rear'],
-  },
-  pkm: {
-    name: 'PKM', cls: '轻机枪', type: 'lmg', slot: 'primary',
-    dmg: [36, 29], range: [40, 75], rpm: 650, mag: 100, reserve: 200, reload: 5.8, ads: 0.42,
-    recoil: [1.1, 0.7], spread: 5.5, mobility: 0.84, fire: 'auto', headMul: 1.35, sprintFire: 0.38,
-    sound: 'lmg', model: { recv: 0.34, barrel: 0.36, hand: 0.18, stock: 'ak', mag: 'box', color: 'wood', grip: 'ak' },
-    slots: ['muzzle', 'barrel', 'laser', 'optic', 'stock', 'under', 'rear'],
   },
   m870: {
     name: 'M870 霰弹枪', cls: '霰弹枪', type: 'shotgun', slot: 'primary',
@@ -50,45 +15,24 @@ export const WEAPONS = {
     sound: 'shotgun', model: { recv: 0.26, barrel: 0.32, hand: 0.18, stock: 'fixed', mag: 'tube', color: 'black', grip: 'ak' },
     slots: ['muzzle', 'barrel', 'laser', 'optic', 'stock', 'rear'],
   },
-  sks: {
-    name: 'SKS', cls: '射手步枪', type: 'marksman', slot: 'primary',
-    dmg: [62, 50], range: [45, 90], rpm: 360, mag: 10, reserve: 60, reload: 2.6, ads: 0.3,
-    recoil: [2.1, 0.6], spread: 5, mobility: 0.93, fire: 'semi', headMul: 1.9, sprintFire: 0.26,
-    sound: 'rifle_heavy', model: { recv: 0.3, barrel: 0.36, hand: 0.26, stock: 'fixed', mag: 'box10', color: 'wood', grip: 'ak' },
-    slots: ['muzzle', 'barrel', 'laser', 'optic', 'stock', 'mag', 'rear'],
-  },
   l115: {
-    name: 'L115A3', cls: '狙击步枪', type: 'sniper', slot: 'primary',
-    dmg: [115, 105], range: [80, 150], rpm: 44, mag: 5, reserve: 30, reload: 3.2, ads: 0.48,
+    name: 'AWM 狙击步枪', cls: '狙击步枪', type: 'sniper', slot: 'primary',
+    dmg: [115, 105], range: [80, 150], rpm: 44, mag: 5, reserve: 30, reload: 3.2, ads: 0.48, bulletRange: 900,
     recoil: [4.5, 0.8], spread: 9, mobility: 0.88, fire: 'bolt', headMul: 2.0, sprintFire: 0.35, defaultOptic: 'sniper',
     sound: 'sniper', model: { recv: 0.34, barrel: 0.5, hand: 0.26, stock: 'sniper', mag: 'box5', color: 'green', grip: 'sniper' },
     slots: ['muzzle', 'barrel', 'laser', 'optic', 'stock', 'mag', 'rear'],
   },
-  m1911: {
-    name: 'M1911', cls: '手枪', type: 'pistol', slot: 'secondary',
-    dmg: [38, 22], range: [10, 25], rpm: 450, mag: 8, reserve: 48, reload: 1.5, ads: 0.14,
-    recoil: [1.6, 0.4], spread: 2, mobility: 1.1, fire: 'semi', headMul: 1.5, sprintFire: 0.1,
-    sound: 'pistol', model: { pistol: true, color: 'black' },
-    slots: ['muzzle', 'laser', 'optic', 'mag'],
-  },
-  revolver: {
-    name: '.357 左轮', cls: '手枪', type: 'pistol', slot: 'secondary',
-    dmg: [62, 40], range: [14, 30], rpm: 190, mag: 6, reserve: 36, reload: 2.4, ads: 0.16,
-    recoil: [3.4, 0.6], spread: 2.4, mobility: 1.08, fire: 'semi', headMul: 1.6, sprintFire: 0.12,
-    sound: 'pistol_heavy', model: { pistol: true, revolver: true, color: 'steel' },
-    slots: ['laser', 'optic'],
-  },
   rpg: {
-    name: 'RPG-7', cls: '发射器', type: 'launcher', slot: 'secondary',
-    dmg: [150, 150], range: [0, 0], rpm: 30, mag: 1, reserve: 3, reload: 3.0, ads: 0.4,
+    name: 'AT4 火箭筒', cls: '火箭筒', type: 'launcher', slot: 'secondary',
+    dmg: [150, 150], range: [0, 0], rpm: 30, mag: 1, reserve: 3, reload: 4.1, ads: 0.4, zoom: 2.4,
     recoil: [5, 1], spread: 4, mobility: 0.9, fire: 'semi', headMul: 1, sprintFire: 0.4, projectile: 'rocket',
     sound: 'rocket', model: { rpg: true, color: 'green' },
     slots: [],
   },
 };
 
-export const PRIMARY_ORDER = ['m4', 'ak', 'scar', 'mp5', 'vector', 'pkm', 'm870', 'sks', 'l115'];
-export const SECONDARY_ORDER = ['m1911', 'revolver', 'rpg'];
+export const PRIMARY_ORDER = ['m4', 'm870', 'l115'];
+export const SECONDARY_ORDER = ['rpg'];
 
 export const SLOT_NAMES = {
   muzzle: '枪口', barrel: '枪管', laser: '激光', optic: '瞄准镜', stock: '枪托', under: '下挂', mag: '弹匣', rear: '后握把',
@@ -166,8 +110,8 @@ export function computeStats(weaponId, attachments = {}) {
     rpm: b.rpm, mag: b.mag, reserve: b.reserve, reload: b.reload, ads: b.ads,
     recoilV: b.recoil[0], recoilH: b.recoil[1], hip: b.spread, adsSpread: b.adsSpread || 0.15,
     mobility: b.mobility, fire: b.fire, headMul: b.headMul, pellets: b.pellets || 1,
-    sprintFire: b.sprintFire, suppressed: false, zoom: 1.2, optic: 'iron', laser: false,
-    projectile: b.projectile, sound: b.sound, shellReload: !!b.shellReload, flashHide: false,
+    sprintFire: b.sprintFire, suppressed: false, zoom: b.zoom || 1.2, optic: 'iron', laser: false,
+    projectile: b.projectile, sound: b.sound, shellReload: !!b.shellReload, flashHide: false, bulletRange: b.bulletRange || 400,
   };
   if (b.defaultOptic && !attachments.optic) { s.optic = b.defaultOptic; s.zoom = 7; }
   for (const slot in attachments) {
@@ -206,27 +150,6 @@ export function statBars(s) {
   };
 }
 
-export const PERKS = [
-  [
-    { id: 'doubletime', name: '双倍时间', desc: '战术冲刺时间翻倍，蹲伏移动速度提高30%。', icon: '⏩' },
-    { id: 'scavenger', name: '拾荒者', desc: '击杀敌人后自动补充弹药与投掷物。', icon: '🎒' },
-    { id: 'eod', name: '爆破专家', desc: '受到的爆炸与燃烧伤害降低50%，闪光效果减半。', icon: '🛡' },
-    { id: 'coldblooded', name: '冷血', desc: '敌方AI锁定你的反应时间大幅延长，哨戒机枪与直升机优先级降低。', icon: '❄' },
-  ],
-  [
-    { id: 'hardline', name: '强硬路线', desc: '所有连杀奖励所需击杀数减少1。', icon: '⬇' },
-    { id: 'overkill', name: '火力过载', desc: '可将第二把主武器作为副武器携带。', icon: '✚' },
-    { id: 'ghost', name: '幽灵', desc: '不会被敌方UAV与雷达侦测到。', icon: '👻' },
-    { id: 'quickfix', name: '速愈', desc: '击杀敌人立即恢复生命，生命恢复延迟缩短。', icon: '❤' },
-  ],
-  [
-    { id: 'sleight', name: '快手', desc: '换弹速度提高35%。', icon: '✋' },
-    { id: 'amped', name: '振奋', desc: '切枪与投掷速度提高，发射器换弹更快。', icon: '⚡' },
-    { id: 'ninja', name: '静步', desc: '脚步声近乎无声，敌人无法通过声音察觉你。', icon: '👣' },
-    { id: 'highalert', name: '高度警觉', desc: '当视野外的敌人瞄准你时，屏幕边缘会闪烁提示。', icon: '⚠' },
-  ],
-];
-
 export const LETHALS = [
   { id: 'frag', name: '破片手雷', desc: '可烹饪的延时破片手雷', count: 2 },
   { id: 'semtex', name: '粘性炸弹', desc: '粘附于任何表面，2秒后爆炸', count: 2 },
@@ -238,37 +161,18 @@ export const TACTICALS = [
   { id: 'stim', name: '兴奋剂', desc: '立即恢复全部生命值', count: 1 },
 ];
 
-export const KILLSTREAKS = [
-  { id: 'uav', name: '侦察无人机', kills: 3, desc: '在小地图上显示敌人位置 30秒', icon: '📡' },
-  { id: 'cluster', name: '集束空袭', kills: 5, desc: '标记目标区域，呼叫战机投下集束炸弹', icon: '✈' },
-  { id: 'sentry', name: '哨戒机枪', kills: 6, desc: '部署一挺自动攻击敌人的机枪塔', icon: '🔫' },
-  { id: 'heli', name: '武装直升机', kills: 7, desc: '直升机盘旋战场并攻击敌人 45秒', icon: '🚁' },
-  { id: 'wp', name: '白磷弹', kills: 10, desc: '白磷覆盖整个战场，灼烧所有敌人', icon: '🔥' },
-];
-
-export const DEFAULT_CLASSES = [
-  { name: '突击兵', primary: 'm4', patt: { optic: 'holo', under: 'vgrip', muzzle: 'comp' }, pcamo: 'none', secondary: 'm1911', satt: {}, scamo: 'none', lethal: 'frag', tactical: 'flash', perks: ['doubletime', 'ghost', 'sleight'] },
-  { name: '近战突破', primary: 'mp5', patt: { optic: 'reddot', laser: 'tac', stock: 'none' }, pcamo: 'digital', secondary: 'm1911', satt: {}, scamo: 'none', lethal: 'semtex', tactical: 'flash', perks: ['doubletime', 'quickfix', 'ninja'] },
-  { name: '狙击手', primary: 'l115', patt: { muzzle: 'suppressor', barrel: 'long' }, pcamo: 'woodland', secondary: 'm1911', satt: {}, scamo: 'none', lethal: 'frag', tactical: 'smoke', perks: ['coldblooded', 'ghost', 'highalert'] },
-  { name: '火力支援', primary: 'pkm', patt: { optic: 'reddot', under: 'bipod' }, pcamo: 'desert', secondary: 'rpg', satt: {}, scamo: 'none', lethal: 'molotov', tactical: 'stim', perks: ['eod', 'hardline', 'amped'] },
-  { name: '霰弹枪手', primary: 'm870', patt: { barrel: 'long', laser: 'tac' }, pcamo: 'tiger', secondary: 'revolver', satt: {}, scamo: 'none', lethal: 'semtex', tactical: 'stim', perks: ['scavenger', 'quickfix', 'ninja'] },
-];
-
-export const DEFAULT_STREAKS = ['uav', 'cluster', 'heli'];
+export const DEFAULT_CLASSES = [{ name: '主角', primary: 'm4', patt: { optic: 'holo', under: 'vgrip', muzzle: 'comp' }, pcamo: 'none', perks: [] }];
+export const DEFAULT_STREAKS = [];
 
 export const MP_MAPS = [
-  { id: 'jinqu', name: '烬区', desc: '西侧高地与岩下村 → 临时营地 / 贫民窟 → 军需仓库 / 办公区。', style: '沙漠城镇 · 三阶段攻防', grad: 'linear-gradient(135deg,#d9c39a,#6a705d)' },
-  { id: 'dune', name: '沙丘镇', desc: '烈日下的中东小镇，集市街道与土坯民居交错，中远距离交火。', style: '沙漠 · 白昼', grad: 'linear-gradient(135deg,#d9a55b,#7a4f25)' },
-  { id: 'frost', name: '寒霜炼厂', desc: '暴风雪中的废弃炼油厂，仓库、储油罐与集装箱构成多层次战场。', style: '雪地 · 阴天', grad: 'linear-gradient(135deg,#c9d6e3,#4f6275)' },
-  { id: 'neon', name: '霓虹街区', desc: '雨夜中的都市街区，霓虹灯下的湿滑街道与狭窄小巷，近距离激战。', style: '都市 · 雨夜', grad: 'linear-gradient(135deg,#ff3fa4,#1b1f5e)' },
-  { id: 'yard', name: '货柜场', desc: '夕阳下的小型集装箱堆场，节奏极快的混战地图。', style: '港口 · 黄昏', grad: 'linear-gradient(135deg,#ff9a3c,#5a2a3a)' },
+  { id: 'cracked', name: '烬区 · 战场灰盒', desc: '保留主要地形、城区街巷和掩体。A 点水塔与房屋、C1 厂房为完整初始状态。', style: '山地与城区 · 原尺度灰盒', grad: 'linear-gradient(135deg,#c1c7c1,#686f69)' },
+  { id: 'karkand', name: 'Karkand · 大战场灰盒', desc: 'Insurgency 社区重制版：长街、巷道、地形高差与桥梁。模型掩体为方块近似。', style: '城镇大战场 · 多路步兵交战', grad: 'linear-gradient(135deg,#c0a680,#626967)' },
+  { id: 'dust2', name: 'Dust II · 经典灰盒', desc: 'CS: Source 原始几何：A 大道、小道、中门、B 隧道与双包点。模型掩体为简化方块。', style: '经典布局 · 原尺度高差', grad: 'linear-gradient(135deg,#d2bea0,#796049)' },
 ];
 
 export const MP_MODES = [
-  { id: 'breakthrough', name: '攻防推进', desc: '烬区专属。进攻方逐区占领 A → B1/B2 → C1/C2；防守方消耗进攻兵力。' },
+  { id: 'breakthrough', name: '攻防推进', desc: '先占领 A，再攻占 B1/B2，最后攻占 C1/C2。前线出生点随区域推进。' },
   { id: 'tdm', name: '团队死斗', desc: '两支队伍对抗，率先达到击杀目标的队伍获胜。' },
-  { id: 'dom', name: '占领', desc: '夺取并守住 A、B、C 三个据点以获取分数。' },
-  { id: 'ffa', name: '自由混战', desc: '人人为敌，率先达到击杀目标者获胜。' },
 ];
 
 export const BOT_NAMES = ['猎鹰', '蝮蛇', '雷霆', '北极狐', '老炮', '独狼', '夜莺', '铁拳', '野马', '黑曼巴', '响尾蛇', '秃鹫', '猎户', '灰熊', '刺刀', '暴风', '渡鸦', '钢锯', '寒鸦', '猛犸', '火蜥', '毒刺', '沙暴', '白鲨'];

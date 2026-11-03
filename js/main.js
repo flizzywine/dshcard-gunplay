@@ -16,9 +16,12 @@ import { Audio } from './audio.js';
 import { HUD } from './hud.js';
 import { Menu } from './menu.js';
 import { MPMatch } from './mp.js';
+import { AttackDefenseMatch } from './attack-defense.js';
 import { buildGun } from './gunmodel.js';
 import { DEFAULT_CLASSES, DEFAULT_STREAKS } from './data.js';
+import { prepareDeltaWeapons } from './delta-weapons.js';
 import { damp } from './util.js';
+import { initPhysics } from './physics.js';
 
 const GradeShader = {
   uniforms: { tDiffuse: { value: null }, time: { value: 0 }, nvg: { value: 0 }, thermal: { value: 0 }, hurt: { value: 0 }, vig: { value: 0.35 }, wp: { value: 0 }, res: { value: new THREE.Vector2(1, 1) } },
@@ -54,7 +57,7 @@ const GradeShader = {
 
 class Game {
   constructor() {
-    this.settings = Object.assign({ sens: 3, recoilScale: 0.3, spreadScale: 0, fov: 70, quality: 'high', volume: .8, voice: false, invertY: false, showFps: true }, JSON.parse(localStorage.getItem('mf_settings') || '{}'));
+    this.settings = Object.assign({ sens: 0.8, recoilScale: 0.3, spreadScale: 0, fov: 70, quality: 'high', volume: .8, voice: false, invertY: false, showFps: true }, JSON.parse(localStorage.getItem('mf_settings') || '{}'));
     if (!this.settings.originalControlsV1) {
       Object.assign(this.settings, { fov: 70, invertY: false, voice: false, originalControlsV1: true });
       delete this.settings.aimMode;
@@ -63,10 +66,15 @@ class Game {
     }
     // Upgrade former defaults once while retaining individually adjusted values.
     if (!this.settings.gunplayDefaultsV2) {
-      if ([1, 1.2].includes(this.settings.sens)) this.settings.sens = 3;
       if (this.settings.recoilScale === 0.6) this.settings.recoilScale = 0.3;
       if (this.settings.spreadScale === 0.65) this.settings.spreadScale = 0;
       this.settings.gunplayDefaultsV2 = true;
+      this.saveSettings();
+    }
+    // Migrate the former default once; retain other saved sensitivity values.
+    if (!this.settings.sensitivityDefaultsV4) {
+      if ([1, 3].includes(this.settings.sens)) this.settings.sens = 0.8;
+      this.settings.sensitivityDefaultsV4 = true;
       this.saveSettings();
     }
     // One sensitivity control; discard the obsolete per-user ADS multiplier.
@@ -81,7 +89,9 @@ class Game {
       this.saveSettings();
     }
     this.profile = Object.assign({ xp: 0, classes: JSON.parse(JSON.stringify(DEFAULT_CLASSES)), streaks: [...DEFAULT_STREAKS], selClass: 0 }, JSON.parse(localStorage.getItem('mf_profile') || '{}'));
-    if (!this.profile.classes || this.profile.classes.length < 5) this.profile.classes = JSON.parse(JSON.stringify(DEFAULT_CLASSES));
+    // Fixed arsenal replaces legacy classes, attachments and rewards; preserve XP/settings.
+    this.profile.classes = JSON.parse(JSON.stringify(DEFAULT_CLASSES));
+    this.profile.selClass = 0; this.profile.streaks = [];
     this.state = 'loading';
     this.paused = false;
     this.time = 0;
@@ -115,6 +125,9 @@ class Game {
     this.audio = new Audio();
     this.audio.setVolume(this.settings.volume); this.audio.voice = this.settings.voice;
     const fill = document.getElementById('loadFill'), txt = document.getElementById('loadText');
+    txt.textContent = '正在初始化物理引擎…';
+    await initPhysics();
+    txt.textContent = '正在生成材质…';
     await initTextures(p => { fill.style.width = (p * 80) + '%'; });
     txt.textContent = '正在初始化渲染管线…';
     await new Promise(r => setTimeout(r, 10));
@@ -179,7 +192,6 @@ class Game {
       if (this.state === 'play') {
         if (e.code === 'Tab') this.hud.showScoreboard(true);
         if (e.code === 'Escape' && !document.pointerLockElement && !this.paused && !this.menu.overlayOpen) this.pause(true);
-        if (this.dead && e.code === 'KeyC' && this.mode && this.mode.canChangeClass) this.menu.showClassSelect();
       }
     });
     window.addEventListener('keyup', e => { I.keys[e.code] = false; if (e.code === 'Tab' && this.state === 'play') this.hud.showScoreboard(false); });
@@ -224,7 +236,7 @@ class Game {
     });
     document.addEventListener('pointerlockerror', () => { this.pendingAim = false; });
     document.getElementById('clickToPlay').addEventListener('click', () => this.lock());
-    document.getElementById('btnChangeClass').addEventListener('click', () => this.menu.showClassSelect());
+
   }
   lock() {
     this.audio.init();
@@ -254,10 +266,10 @@ class Game {
       fwd: K.KeyW, back: K.KeyS, left: K.KeyA, right: K.KeyD,
       sprint: K.ShiftLeft || K.ShiftRight, sprintPressed: P.ShiftLeft || P.ShiftRight, jumpPressed: P.Space, pronePressed: P.KeyZ, crouchPressed: P.KeyC || P.ControlLeft,
       fire: !!(I.buttons & 1), ads: !!(I.buttons & 4),
-      reloadPressed: P.KeyR, swapPressed: I.wheel !== 0, slot1: P.Digit1, slot2: P.Digit2,
-      meleePressed: P.KeyV || P.Mouse3, lethalPressed: P.KeyG, lethal: K.KeyG, tacticalPressed: P.KeyQ, tactical: K.KeyQ,
+      reloadPressed: P.KeyR, swapPressed: I.wheel !== 0, slot1: P.Digit1, slot2: P.Digit2, slot3: P.Digit3, slot4: P.Digit4,
+      meleePressed: false, lethalPressed: false, lethal: false, tacticalPressed: false, tactical: false,
       interact: K.KeyF, interactPressed: P.KeyF,
-      streak: P.Digit3 ? 0 : P.Digit4 ? 1 : P.Digit5 ? 2 : -1,
+      streak: -1,
       firePressed: P.Mouse0, adsPressed: P.Mouse2,
       mdx: I.mdx, mdy: I.mdy,
     };
@@ -272,7 +284,7 @@ class Game {
     for (const p of this.projectiles) if (p.mesh) this.scene.remove(p.mesh);
     for (const p of this.pickups) this.scene.remove(p.mesh);
     if (this.mode && this.mode.dispose) this.mode.dispose();
-    if (this.player) this.player.ws.dispose();
+    if (this.player) { this.player.physicsBody?.dispose(); this.player.ws.dispose(); }
     if (this.world) this.world.dispose();
     this.effects.clear();
     this.audio.stopAll();
@@ -300,16 +312,18 @@ class Game {
     return w;
   }
   async startGame(kind, cfg) {
-    if (kind !== 'mp' || !MAPS[cfg?.map] || !['tdm', 'dom', 'ffa', 'breakthrough'].includes(cfg?.mode)) throw new Error('仅支持多人对战及现有地图');
-    if (cfg.mode === 'breakthrough' && !MAPS[cfg.map].sectors) throw new Error('攻防推进需要支持分区的地图');
+    if (kind !== 'mp' || !MAPS[cfg?.map] || !(cfg?.mode==='tdm'||cfg?.mode==='breakthrough'&&cfg.map==='cracked')) throw new Error('仅支持现有地图的团队死斗及烬区攻防');
     this.menu.showLoadingOverlay('正在部署…');
     await new Promise(r => setTimeout(r, 30));
+    await MAPS[cfg.map].prepare?.();
+    this.menu.showLoadingOverlay('正在加载四种武器…');
+    await prepareDeltaWeapons();
     this.audio.init();
     this.clearWorld();
     this.renderPass.scene = this.scene; this.renderPass.camera = this.camera;
     this.vmPass.enabled = true;
     this.loadMap(cfg.map);
-    this.mode = new MPMatch(this, cfg);
+    this.mode = cfg.mode==='breakthrough'?new AttackDefenseMatch(this,cfg):new MPMatch(this, cfg);
     this.mode.start();
     this.state = 'play'; this.paused = false; this.dead = false; this.ending = false;
     this.time = 0;
@@ -386,8 +400,10 @@ class Game {
     this.composer.render(dt);
   }
   update(dt, inp) {
+    this.world.physics.step(dt);
     this.time += dt;
     this.pathBudget = 3;
+    this.coverBudget = 2;
     if (this.noises.length) this.noises = this.noises.filter(n => this.time - n.t < 0.6);
     const pl = this.player;
     if (pl) {
@@ -417,7 +433,7 @@ class Game {
   }
   updatePickups(dt, inp) {
     const pl = this.player;
-    let near = null, nd = 1.8;
+
     for (let i = this.pickups.length - 1; i >= 0; i--) {
       const p = this.pickups[i];
       p.t += dt;
@@ -430,33 +446,11 @@ class Game {
         const add = Math.max(5, Math.floor((p.reserve ?? slot.stats.mag) * 0.5 + (p.mag || 0)));
         if (slot.reserve < slot.stats.reserve * 2) { slot.reserve = Math.min(slot.stats.reserve * 2, slot.reserve + add); this.hud.popup('+弹药 ' + add, '#ccc'); this.audio.click(2200, 0.05, 0.3); this.scene.remove(p.mesh); this.pickups.splice(i, 1); continue; }
       }
-      if (!slot && d < nd) { near = p; nd = d; }
+
     }
-    this.nearPickup = near;
-    if (this.mode && this.mode.interactPrompt) return;
-    if (near && pl && pl.alive) {
-      const def = near.weaponId;
-      this.hud.prompt(`<b>F</b>拾取 ${buildName(def)}`);
-      if (inp.interactPressed) {
-        const ws = pl.ws;
-        const cur = ws.w;
-        const isSecondary = ['m1911', 'revolver', 'rpg'].includes(def);
-        let idx = ws.cur;
-        if (ws.slots.length > 1) idx = isSecondary ? 1 : 0;
-        if (ws.slots[idx] && ws.slots[idx].stats.type === 'pistol' && !isSecondary && ws.cur === 0) idx = 0;
-        const old = ws.slots[idx];
-        if (old) this.spawnPickup(old.id, old.att, pl.pos, old.mag, old.reserve);
-        const st = { id: def, att: near.att, camo: 'none' };
-        ws.replaceSlot(idx, st, near.mag ?? undefined, near.reserve ?? undefined);
-        this.scene.remove(near.mesh); this.pickups = this.pickups.filter(p => p !== near);
-        this.audio.ui('equip');
-      }
-    } else if (!this.mode || !this.mode.interactPrompt) this.hud.prompt(null);
+
   }
 }
-
-import { WEAPONS } from './data.js';
-function buildName(id) { return WEAPONS[id] ? WEAPONS[id].name : id; }
 
 const game = new Game();
 window.game = game;

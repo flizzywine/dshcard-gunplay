@@ -1,0 +1,4 @@
+# Preserve upstream asset bytes, including their original line endings.
+assets/unvanquished-rifle/** -text
+assets/unvanquished-weapons/** -text
+lib/rapier/rapier.mjs -text

@@ -1,0 +1,255 @@
+{
+  "retrieved": "2026-11-03T13:14:59.283Z",
+  "commits": {
+    "res-weapons_src.dpkdir": "5af7744d4d295ef71ea30b5b4e29d166555b152a",
+    "res-players_src.dpkdir": "bbf9e8f276b3cf3f4b3fab217f2c947d2dd25515"
+  },
+  "files": [
+    {
+      "path": "models/weapons/lcannon/lcannon_n.webp",
+      "name": "lcannon/lcannon_n.webp",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/lcannon/lcannon_n.webp",
+      "bytes": 7285998,
+      "sha256": "c6e48b19cfc246314e6cd01ca1d3af82d2ceb47f1c66b5fbd450647aba7d8698"
+    },
+    {
+      "path": "models/weapons/lcannon/lcannon_s.webp",
+      "name": "lcannon/lcannon_s.webp",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/lcannon/lcannon_s.webp",
+      "bytes": 5288644,
+      "sha256": "0cf456573ad9846b23c3dda778e1cf3bbd282a5a3e2bed01584245bf5e081a4e"
+    },
+    {
+      "path": "models/weapons/lcannon/lcannon_view_fire.md5anim",
+      "name": "lcannon/lcannon_view_fire.md5anim",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/lcannon/lcannon_view_fire.md5anim",
+      "bytes": 34073,
+      "sha256": "78a7d7f406f469996a96b286a1bedac0cba3e4f25bbba85c8b597a85a9680983"
+    },
+    {
+      "path": "models/weapons/lcannon/lcannon_view_idle.md5anim",
+      "name": "lcannon/lcannon_view_idle.md5anim",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/lcannon/lcannon_view_idle.md5anim",
+      "bytes": 285862,
+      "sha256": "30785b1b301fd63a0e431baccfbf6f83859c787172816982b0d1b4bbc83e874a"
+    },
+    {
+      "path": "models/weapons/lcannon/lcannon_view_lower.md5anim",
+      "name": "lcannon/lcannon_view_lower.md5anim",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/lcannon/lcannon_view_lower.md5anim",
+      "bytes": 17261,
+      "sha256": "4418b0a5bf7fc74a857ada34055ceb3966b2393eb0765a707aa20d7615f15ff2"
+    },
+    {
+      "path": "models/weapons/lcannon/lcannon_view_raise.md5anim",
+      "name": "lcannon/lcannon_view_raise.md5anim",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/lcannon/lcannon_view_raise.md5anim",
+      "bytes": 21497,
+      "sha256": "3b58013bd67d7990cbbd95e8f71b78a7e0627d911fddb7164b5c9104912628b0"
+    },
+    {
+      "path": "models/weapons/lcannon/lcannon_view_reload.md5anim",
+      "name": "lcannon/lcannon_view_reload.md5anim",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/lcannon/lcannon_view_reload.md5anim",
+      "bytes": 81997,
+      "sha256": "b6b9d8f3eece66f7fb89c098e21b27875dd450b25b086598065f6372afe9e8bc"
+    },
+    {
+      "path": "models/weapons/lcannon/lcannon_view.md5mesh",
+      "name": "lcannon/lcannon_view.md5mesh",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/lcannon/lcannon_view.md5mesh",
+      "bytes": 194062,
+      "sha256": "3738bf33beeaf68f0b7536f51cbc22827d0583f75c040e4812b7d1169e32b372"
+    },
+    {
+      "path": "models/weapons/lcannon/lcannon.webp",
+      "name": "lcannon/lcannon.webp",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/lcannon/lcannon.webp",
+      "bytes": 6351742,
+      "sha256": "4a3f2874eb17330d4bef697f748f26a7fc4e1b8d38cb128ef8097a254a7e4a1d"
+    },
+    {
+      "path": "models/weapons/lcannon/weapon.cfg",
+      "name": "lcannon/weapon.cfg",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/lcannon/weapon.cfg",
+      "bytes": 592,
+      "sha256": "b5ec2d30a2c03d7a1c8ec24b4c04857cb79a7dc7bafeae21dae8165b58de2c7b"
+    },
+    {
+      "path": "models/players/human_hand/legacy_hand.png",
+      "name": "legacy_hand.png",
+      "player": true,
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-players_src.dpkdir/bbf9e8f276b3cf3f4b3fab217f2c947d2dd25515/models/players/human_hand/legacy_hand.png",
+      "bytes": 432670,
+      "sha256": "35a9dcebfbfad579272f99bea85cdc27ae37765edfb3090940f44bfb1457fdea"
+    },
+    {
+      "path": "models/weapons/mdriver/core_n.png",
+      "name": "mdriver/core_n.png",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/mdriver/core_n.png",
+      "bytes": 28226,
+      "sha256": "31cec9ee641adc2a083aca9a98839dcee1fe1cb9be7faf6d8e1b1ba9e3efa674"
+    },
+    {
+      "path": "models/weapons/mdriver/core_s.png",
+      "name": "mdriver/core_s.png",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/mdriver/core_s.png",
+      "bytes": 13196,
+      "sha256": "77c6ab23e2d5a51d162e6b80b5f89cf8ca59f3119cbcec697349436a7b11f66d"
+    },
+    {
+      "path": "models/weapons/mdriver/core.png",
+      "name": "mdriver/core.png",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/mdriver/core.png",
+      "bytes": 14167,
+      "sha256": "3298a67f624988b4dcd1faf5ecccc35ee4d12b0063d3070161d5724db8da680d"
+    },
+    {
+      "path": "models/weapons/mdriver/lens.jpg",
+      "name": "mdriver/lens.jpg",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/mdriver/lens.jpg",
+      "bytes": 4995,
+      "sha256": "8e14161e8da0a38745bc27a5bc03de5e41a81ca5f84df009e6f2fdbca7fc8212"
+    },
+    {
+      "path": "models/weapons/mdriver/mdriver_view_fire.md5anim",
+      "name": "mdriver/mdriver_view_fire.md5anim",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/mdriver/mdriver_view_fire.md5anim",
+      "bytes": 54362,
+      "sha256": "4a5047f304ee5355956fe2739f1b1adac3258b2df2287b7320b9441f5ec2eb6c"
+    },
+    {
+      "path": "models/weapons/mdriver/mdriver_view_idle.md5anim",
+      "name": "mdriver/mdriver_view_idle.md5anim",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/mdriver/mdriver_view_idle.md5anim",
+      "bytes": 8032,
+      "sha256": "45a414479b8a41a05a14704dd163a72dabcee9452bf74b43c490d977ecf79949"
+    },
+    {
+      "path": "models/weapons/mdriver/mdriver_view_lower.md5anim",
+      "name": "mdriver/mdriver_view_lower.md5anim",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/mdriver/mdriver_view_lower.md5anim",
+      "bytes": 32353,
+      "sha256": "c04e91e5b06f9effaad3c825ce217b6099d6a64db0a62593405750ebdf0e0280"
+    },
+    {
+      "path": "models/weapons/mdriver/mdriver_view_raise.md5anim",
+      "name": "mdriver/mdriver_view_raise.md5anim",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/mdriver/mdriver_view_raise.md5anim",
+      "bytes": 46028,
+      "sha256": "39931e2ad4cb065a763276189f626e9b5c5cab262fb8c189bf5a5609c2c2407b"
+    },
+    {
+      "path": "models/weapons/mdriver/mdriver_view_reload.md5anim",
+      "name": "mdriver/mdriver_view_reload.md5anim",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/mdriver/mdriver_view_reload.md5anim",
+      "bytes": 135610,
+      "sha256": "bc249ac3a5d041371734bbd6547d53e608f73e4a2469074e7e469865f4f031b3"
+    },
+    {
+      "path": "models/weapons/mdriver/mdriver_view.md5mesh",
+      "name": "mdriver/mdriver_view.md5mesh",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/mdriver/mdriver_view.md5mesh",
+      "bytes": 215681,
+      "sha256": "5448a918af012f9bf0626629d5d1e685008d3ed8901c6f29edd11c4057aaeb77"
+    },
+    {
+      "path": "models/weapons/mdriver/weapon.cfg",
+      "name": "mdriver/weapon.cfg",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/mdriver/weapon.cfg",
+      "bytes": 715,
+      "sha256": "fd392af75aea3d83c906231072426628e0cce18d1fd1759e863c8293f14a838f"
+    },
+    {
+      "path": "models/weapons/mdriver/zmdriver_n.png",
+      "name": "mdriver/zmdriver_n.png",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/mdriver/zmdriver_n.png",
+      "bytes": 228469,
+      "sha256": "77823c7eefb9a3e5d1d92274b34f5d9a1cad1e4196976f2ed4d6bbe7502e2d00"
+    },
+    {
+      "path": "models/weapons/mdriver/zmdriver_s.png",
+      "name": "mdriver/zmdriver_s.png",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/mdriver/zmdriver_s.png",
+      "bytes": 210657,
+      "sha256": "6ee939e515463fa5ff034622c3628c67ce5cf62a514096c9e1505189c06c2c74"
+    },
+    {
+      "path": "models/weapons/mdriver/zmdriver.png",
+      "name": "mdriver/zmdriver.png",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/mdriver/zmdriver.png",
+      "bytes": 445592,
+      "sha256": "f521fe744df54dfbf39e649511cc8259f7f4a3f433ff5040d62db673bca47fd2"
+    },
+    {
+      "path": "models/weapons/shotgun/shotgun_n.png",
+      "name": "shotgun/shotgun_n.png",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/shotgun/shotgun_n.png",
+      "bytes": 1330228,
+      "sha256": "b2b8fca18c480f8a4e2437a61448ca4d1bc483d2abdcb80bd3c9437042f122cf"
+    },
+    {
+      "path": "models/weapons/shotgun/shotgun_s.png",
+      "name": "shotgun/shotgun_s.png",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/shotgun/shotgun_s.png",
+      "bytes": 209779,
+      "sha256": "42f58e90c68b888c30b2ea033cf3eff452550e5cf4f63445be65e69ade5c2c35"
+    },
+    {
+      "path": "models/weapons/shotgun/shotgun_view_fire.md5anim",
+      "name": "shotgun/shotgun_view_fire.md5anim",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/shotgun/shotgun_view_fire.md5anim",
+      "bytes": 74071,
+      "sha256": "e0f42630a68f935ad8e22e9843032e5e6a17dceaaca086bd557ba8b7abdcd7ac"
+    },
+    {
+      "path": "models/weapons/shotgun/shotgun_view_idle.md5anim",
+      "name": "shotgun/shotgun_view_idle.md5anim",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/shotgun/shotgun_view_idle.md5anim",
+      "bytes": 621754,
+      "sha256": "e1493b8cdf2cf611ca28e2679711209ce88eb0c084156874d764458de15240fe"
+    },
+    {
+      "path": "models/weapons/shotgun/shotgun_view_lower.md5anim",
+      "name": "shotgun/shotgun_view_lower.md5anim",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/shotgun/shotgun_view_lower.md5anim",
+      "bytes": 37368,
+      "sha256": "b625d2137a4a5f83b4a6ce08e86b102f1e665bba37e00b33c460135170a61a9b"
+    },
+    {
+      "path": "models/weapons/shotgun/shotgun_view_raise.md5anim",
+      "name": "shotgun/shotgun_view_raise.md5anim",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/shotgun/shotgun_view_raise.md5anim",
+      "bytes": 49434,
+      "sha256": "a505c5e097a9c752c75997e572f1270655bdefe5476bce7dddb0a49257cda17c"
+    },
+    {
+      "path": "models/weapons/shotgun/shotgun_view_reload.md5anim",
+      "name": "shotgun/shotgun_view_reload.md5anim",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/shotgun/shotgun_view_reload.md5anim",
+      "bytes": 174796,
+      "sha256": "4c26ab5f165e1c0b500f294a4869b92f3b8ae2b37945778b18f7b9cbb0cf95ea"
+    },
+    {
+      "path": "models/weapons/shotgun/shotgun_view.md5mesh",
+      "name": "shotgun/shotgun_view.md5mesh",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/shotgun/shotgun_view.md5mesh",
+      "bytes": 573987,
+      "sha256": "515d80a18a4f26afcd0d611c4c5ebce0b41397db0e196626a8105a9767a27fdf"
+    },
+    {
+      "path": "models/weapons/shotgun/shotgun.png",
+      "name": "shotgun/shotgun.png",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/shotgun/shotgun.png",
+      "bytes": 1534830,
+      "sha256": "8f7396df3511da5832ddc2439398c230dc2948b0e76e1e2978b73d8310a638cc"
+    },
+    {
+      "path": "models/weapons/shotgun/weapon.cfg",
+      "name": "shotgun/weapon.cfg",
+      "url": "https://raw.githubusercontent.com/UnvanquishedAssets/res-weapons_src.dpkdir/5af7744d4d295ef71ea30b5b4e29d166555b152a/models/weapons/shotgun/weapon.cfg",
+      "bytes": 724,
+      "sha256": "81d3b9b24c1a964830c65d7eddace6c6aa458d492f5597196bdb534304c84aeb"
+    }
+  ]
+}

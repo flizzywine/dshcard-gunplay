@@ -1,4 +1,4 @@
-// 冒烟测试：加载页面、截图主菜单、启动战役/多人，收集错误
+// 冒烟测试：加载页面、截图主菜单、启动两张地图，收集错误
 import { chromium } from 'playwright';
 const shots = process.argv[2] || 'all';
 const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
@@ -17,8 +17,6 @@ const run = async (name, fn) => { try { await fn(); } catch (e) { errors.push(`[
 if (shots === 'all' || shots === 'ui') {
   await run('lobby', async () => { await page.evaluate(() => game.menu.showLobby()); await page.waitForTimeout(500); await page.screenshot({ path: 'test/lobby.png' }); });
   await run('loadout', async () => { await page.evaluate(() => game.menu.showLoadouts('main')); await page.waitForTimeout(800); await page.screenshot({ path: 'test/loadout.png' }); });
-  await run('gunsmith', async () => { await page.evaluate(() => game.menu.showGunsmith(0, 'primary')); await page.waitForTimeout(1200); await page.screenshot({ path: 'test/gunsmith.png' }); });
-  await run('camp', async () => { await page.evaluate(() => game.menu.showCampaign()); await page.waitForTimeout(500); await page.screenshot({ path: 'test/brief.png' }); });
 }
 const play = async (kind, cfg, tag) => {
   await page.evaluate(([k, c]) => game.startGame(k, c), [kind, cfg]);
@@ -32,10 +30,9 @@ const play = async (kind, cfg, tag) => {
   const info = await page.evaluate(() => ({ bots: game.bots.length, alive: game.bots.filter(b => b.alive).length, pl: game.player && [game.player.pos.x.toFixed(1), game.player.pos.z.toFixed(1), game.player.hp], calls: game.renderer.info.render.calls, tris: game.renderer.info.render.triangles }));
   errors.push(`[info ${tag}] ` + JSON.stringify(info));
 };
-if (shots === 'all' || shots === 'camp') await run('campaign', () => play('campaign', { diff: 1 }, 'camp'));
 if (shots === 'all' || shots.startsWith('mp')) {
-  const maps = shots.startsWith('mp:') ? [shots.slice(3)] : ['dune', 'frost', 'neon', 'yard'];
-  for (const m of maps) await run('mp ' + m, () => play('mp', { mode: m === 'frost' ? 'dom' : 'tdm', map: m, diff: 1, allies: 5, enemies: 6, scoreLimit: 50, timeLimit: 10 }, 'mp_' + m));
+  const maps = shots.startsWith('mp:') ? [shots.slice(3)] : ['karkand', 'dust2'];
+  for (const m of maps) await run('mp ' + m, () => play('mp', { mode: 'tdm', map: m, diff: 1, allies: 5, enemies: 6, scoreLimit: 50, timeLimit: 10 }, 'mp_' + m));
 }
 console.log(errors.slice(0, 60).join('\n'));
 await browser.close();
