@@ -12,6 +12,7 @@ const MAX_ATT = 5;
 
 // 地图缩略插画（内联SVG）
 const MAP_ART = {
+  jinqu: `<svg viewBox="0 0 300 150" preserveAspectRatio="none"><rect width="300" height="150" fill="#b2a181"/><path d="M0 54L24 29 56 43 85 21 112 50 300 29V0H0Z" fill="#8c816b"/><path d="M0 82H140V57H300M164 0V150" fill="none" stroke="#6c6b60" stroke-width="12"/><g fill="#d9c8a3" stroke="#857960" stroke-width="2"><path d="M69 103h28v18H69zM100 78h21v19h-21zM100 120h29v18h-29zM105 22h32v25h-32zM183 21h49v26h-49zM189 83h47v13h-47zM238 88h15v42h-15zM194 124h38v14h-38zM135 80h18v25h-18zM134 114h22v20h-22z"/></g><path d="M16 115L47 99 59 132H9Z" fill="#8a7e64"/><g fill="#e8f1ca" font-family="sans-serif" font-weight="bold" font-size="12"><text x="75" y="99">A</text><text x="106" y="17">B1</text><text x="134" y="77">B2</text><text x="194" y="17">C1</text><text x="203" y="113">C2</text></g></svg>`,
   dune: `<svg viewBox="0 0 300 150" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="gd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f2c98a"/><stop offset="1" stop-color="#b3773d"/></linearGradient></defs><rect width="300" height="150" fill="url(#gd)"/><circle cx="230" cy="40" r="18" fill="#fff4d6" opacity=".9"/><path d="M0 110 L20 110 20 80 60 80 60 95 75 95 75 70 95 70 95 60 105 60 105 70 120 70 120 100 150 100 150 75 190 75 190 90 210 90 210 65 235 65 235 90 260 90 260 78 300 78 300 150 0 150Z" fill="#6b4520"/><path d="M85 60 Q100 40 115 60Z" fill="#6b4520"/><rect x="98" y="30" width="4" height="30" fill="#6b4520"/></svg>`,
   frost: `<svg viewBox="0 0 300 150" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="gf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dfe7ee"/><stop offset="1" stop-color="#8395a6"/></linearGradient></defs><rect width="300" height="150" fill="url(#gf)"/><path d="M0 70 L50 40 90 65 140 30 200 70 250 45 300 65 300 150 0 150Z" fill="#b8c5d2"/><rect x="30" y="80" width="40" height="45" fill="#46566a"/><ellipse cx="50" cy="80" rx="20" ry="5" fill="#56677b"/><rect x="90" y="70" width="50" height="55" fill="#3b4a5c"/><ellipse cx="115" cy="70" rx="25" ry="6" fill="#4d5d70"/><rect x="170" y="45" width="6" height="80" fill="#3b4a5c"/><rect x="190" y="90" width="100" height="35" fill="#34414f"/><rect x="0" y="125" width="300" height="25" fill="#eef3f7"/></svg>`,
   neon: `<svg viewBox="0 0 300 150" preserveAspectRatio="xMidYMid slice"><rect width="300" height="150" fill="#0d0f2a"/><rect x="10" y="30" width="50" height="120" fill="#16183a"/><rect x="70" y="10" width="45" height="140" fill="#1b1d45"/><rect x="125" y="50" width="60" height="100" fill="#15173a"/><rect x="195" y="20" width="40" height="130" fill="#1d2050"/><rect x="245" y="45" width="55" height="105" fill="#14163a"/><rect x="20" y="60" width="30" height="6" fill="#ff3fa4"/><rect x="80" y="40" width="25" height="5" fill="#3ff4ff"/><rect x="135" y="70" width="40" height="6" fill="#ffdd3f"/><rect x="205" y="55" width="20" height="30" fill="none" stroke="#ff3fa4" stroke-width="2"/><rect x="255" y="80" width="35" height="5" fill="#3ff4ff"/><rect x="0" y="130" width="300" height="20" fill="#20234f" opacity=".8"/><g stroke="#8fa0ff" stroke-width=".6" opacity=".35"><line x1="30" y1="0" x2="25" y2="20"/><line x1="120" y1="10" x2="115" y2="30"/><line x1="220" y1="0" x2="215" y2="20"/><line x1="270" y1="30" x2="265" y2="50"/><line x1="160" y1="20" x2="155" y2="40"/></g></svg>`,
@@ -48,7 +49,7 @@ export class Menu {
     this.camTarget = { pos: new THREE.Vector3(-0.3, 1.45, 4.2), look: new THREE.Vector3(0.6, 1.15, 0) };
     this.camLook = this.camTarget.look.clone();
     this.gunRotY = -Math.PI / 2; this.gunRotX = 0; this.gunSpin = true;
-    this.lobby = { mode: 'tdm', map: 'dune', diff: 1, allies: 5, enemies: 6, time: 10 };
+    this.lobby = { mode: 'breakthrough', map: 'jinqu', side: 0, diff: 1, allies: 5, enemies: 6, time: 15 };
     this.selClass = game.profile.selClass || 0;
     this.buildScene();
     this.el.addEventListener('pointerdown', () => game.audio.init());
@@ -218,7 +219,7 @@ export class Menu {
       <div class="menu-left">
         <div class="menu-title">现代战线</div>
         <div class="menu-sub">MODERN FRONTLINE</div>
-        <div class="mbtn" data-a="mp"><div class="ico">⚔</div><div><div class="mt">多人对战</div><div class="md">团队死斗 · 占领 · 自由混战（对战AI）</div></div></div>
+        <div class="mbtn" data-a="mp"><div class="ico">⚔</div><div><div class="mt">多人对战</div><div class="md">烬区攻防 · 团队死斗 · 占领 · 自由混战（AI）</div></div></div>
         <div class="mbtn" data-a="loadout"><div class="ico">⚙</div><div><div class="mt">武器装备</div><div class="md">自定义配装 · 枪匠 · 技能 · 连杀奖励</div></div></div>
         <div class="mbtn" data-a="settings"><div class="ico">☰</div><div><div class="mt">设置</div><div class="md">画面 · 操作 · 音频</div></div></div>
       </div>
@@ -255,6 +256,7 @@ export class Menu {
           <div class="lobby-col" style="flex:1;max-width:460px">
             <div class="panel"><div class="opts">
               <div>AI 难度</div>${seg('diff', [0, 1, 2], DIFF_NAMES)}
+              <div class="bt-only">攻防阵营</div><div class="bt-only">${seg('side', [0, 1], ['进攻方', '防守方'])}</div>
               <div class="tm-only">队友数量</div><div class="tm-only">${seg('allies', [3, 5], ['3', '5'])}</div>
               <div>敌人数量</div>${seg('enemies', [4, 6, 8], ['4', '6', '8'])}
               <div>时间限制</div>${seg('time', [5, 10, 15], ['5 分钟', '10 分钟', '15 分钟'])}
@@ -274,19 +276,22 @@ export class Menu {
       </div>`, 'solid', 'lobby');
     const upd = () => {
       const lim = L.mode === 'dom' ? '先达到 200 分' : L.mode === 'ffa' ? '先达到 25 击杀' : '先达到 50 击杀';
-      r.querySelector('#limitTxt').textContent = `${lim}，或时间结束时领先`;
+      r.querySelector('#limitTxt').textContent = L.mode === 'breakthrough' ? '180 进攻兵力；突破区域 +80。全部突破获胜，兵力或时间耗尽则防守方获胜。' : `${lim}，或时间结束时领先`;
       r.querySelectorAll('.tm-only').forEach(e => e.style.opacity = L.mode === 'ffa' ? 0.3 : 1);
+      r.querySelectorAll('.bt-only').forEach(e => e.style.display = L.mode === 'breakthrough' ? '' : 'none');
+      r.querySelectorAll('.mode').forEach(d => d.classList.toggle('sel', d.dataset.m === L.mode));
+      r.querySelectorAll('.mapc').forEach(d => d.classList.toggle('sel', d.dataset.map === L.map));
     };
     upd();
-    this.on(r, '.mode', el => { L.mode = el.dataset.m; r.querySelectorAll('.mode').forEach(d => d.classList.toggle('sel', d === el)); upd(); });
-    this.on(r, '.mapc', el => { L.map = el.dataset.map; r.querySelectorAll('.mapc').forEach(d => d.classList.toggle('sel', d === el)); });
+    this.on(r, '.mode', el => { L.mode = el.dataset.m; if (L.mode === 'breakthrough') L.map = 'jinqu'; upd(); });
+    this.on(r, '.mapc', el => { L.map = el.dataset.map; if (L.map === 'jinqu') L.mode = 'breakthrough'; else if (L.mode === 'breakthrough') L.mode = 'tdm'; upd(); });
     r.querySelectorAll('.seg').forEach(sg => sg.querySelectorAll('div').forEach(d => d.addEventListener('click', () => { L[sg.dataset.k] = +d.dataset.v; sg.querySelectorAll('div').forEach(x => x.classList.toggle('sel', x === d)); })));
     this.on(r, '[data-a=back]', () => this.showMain());
     this.on(r, '[data-a=loadout]', () => this.showLoadouts('lobby'));
     this.on(r, '[data-a=go]', () => {
       const scoreLimit = L.mode === 'dom' ? 200 : L.mode === 'ffa' ? 25 : 50;
       this.showLoadingOverlay('正在匹配对局…');
-      setTimeout(() => this.game.startGame('mp', { mode: L.mode, map: L.map, diff: L.diff, allies: L.mode === 'ffa' ? 0 : L.allies, enemies: L.enemies, scoreLimit, timeLimit: L.time }), 600);
+      setTimeout(() => this.game.startGame('mp', { mode: L.mode, map: L.map, side: L.side ? 'B' : 'A', diff: L.diff, allies: L.mode === 'ffa' ? 0 : L.allies, enemies: L.enemies, scoreLimit, timeLimit: L.time }), 600);
     });
   }
   perk(id) { for (const col of PERKS) for (const p of col) if (p.id === id) return p; return { name: id, desc: '', icon: '' }; }

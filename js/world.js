@@ -37,6 +37,54 @@ export class World {
   }
 
   // ---------- 基础构建 ----------
+  // Translate a whole construction (batched geometry, props and colliders) together.
+  elevated(y, build) {
+    const start = this.boxes.length, children = this.root.children.length;
+    const counts = new Map([...this.geoLists].map(([m, list]) => [m, list.length]));
+    build();
+    for (let i = start; i < this.boxes.length; i++) { this.boxes[i].y0 += y; this.boxes[i].y1 += y; }
+    for (const [m, list] of this.geoLists) for (let i = counts.get(m) || 0; i < list.length; i++) list[i].translate(0, y, 0);
+    for (let i = children; i < this.root.children.length; i++) this.root.children[i].position.y += y;
+  }
+
+  terrain(height, material = 'sand') {
+    const size = this.def.size + 80, n = Math.ceil(size / 2), cs = size / n;
+    const positions = [], uvs = [], indices = [], heights = new Float32Array((n + 1) ** 2);
+    for (let z = 0; z <= n; z++) for (let x = 0; x <= n; x++) {
+      const wx = x * cs - size / 2, wz = z * cs - size / 2, y = height(wx, wz);
+      heights[z * (n + 1) + x] = y;
+      positions.push(wx, y, wz); uvs.push(wx / 6, wz / 6);
+      if (x < n && z < n) { const a = z * (n + 1) + x, c = a + n + 1; indices.push(a, c, a + 1, a + 1, c, c + 1); }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices); geo.computeVertexNormals();
+    this.mesh(geo, material, 0, 0, 0, { cast: false });
+    // Use the very same triangles as the rendered surface for feet and rays.
+    this.terrainHeight = (x, z) => {
+      const fx = clamp((x + size / 2) / cs, 0, n - 0.00001), fz = clamp((z + size / 2) / cs, 0, n - 0.00001);
+      const ix = Math.floor(fx), iz = Math.floor(fz), u = fx - ix, v = fz - iz, a = iz * (n + 1) + ix;
+      const h0 = heights[a], h1 = heights[a + 1], h2 = heights[a + n + 1], h3 = heights[a + n + 2];
+      return u + v <= 1 ? h0 + u * (h1 - h0) + v * (h2 - h0) : h3 + (1 - u) * (h2 - h3) + (1 - v) * (h1 - h3);
+    };
+  }
+
+  terrainHit(o, d, maxT) {
+    if (!this.terrainHeight || maxT <= 0) return null;
+    const steps = Math.max(1, Math.ceil(maxT / 0.75));
+    for (let i = 0; i <= steps; i++) {
+      const t = maxT * i / steps, x = o.x + d.x * t, z = o.z + d.z * t;
+      if (o.y + d.y * t > this.terrainHeight(x, z)) continue;
+      let lo = Math.max(0, t - maxT / steps), hi = t;
+      for (let j = 0; j < 9; j++) { const mid = (lo + hi) / 2; if (o.y + d.y * mid > this.terrainHeight(o.x + d.x * mid, o.z + d.z * mid)) lo = mid; else hi = mid; }
+      const p = o.clone().addScaledVector(d, hi), e = 0.2;
+      const normal = new THREE.Vector3(this.terrainHeight(p.x - e, p.z) - this.terrainHeight(p.x + e, p.z), 2 * e, this.terrainHeight(p.x, p.z - e) - this.terrainHeight(p.x, p.z + e)).normalize();
+      return { t: hi, point: p, normal, box: { mat: this.def.surface || 'sand' } };
+    }
+    return null;
+  }
+
   box(cx, y0, cz, w, h, d, matName = 'concrete', opt = {}) {
     const m = mat(matName);
     if (opt.visible !== false) {
@@ -96,7 +144,7 @@ export class World {
     const x0 = cx - w / 2, x1 = cx + w / 2, z0 = cz - d / 2, z1 = cz + d / 2;
     const mk = (side, len) => {
       const arr = [];
-      for (const c of (opt.doors?.[side] || [])) arr.push({ c: len / 2 + c, w: 1.5, y0: 0, y1: 2.4 });
+      for (const c of (opt.doors?.[side] || [])) arr.push({ c: len / 2 + c, w: opt.doorWidth || 1.5, y0: 0, y1: 2.4 });
       for (const c of (opt.windows?.[side] || [])) arr.push({ c: len / 2 + c, w: 1.3, y0: 1.0, y1: 2.1 });
       return arr;
     };
@@ -456,7 +504,7 @@ export class World {
     for (let i = 0; i < p.count; i++) {
       const x = p.getX(i), z = p.getZ(i), y = p.getY(i);
       const a = (Math.atan2(z, x) / (Math.PI * 2) + 1) % 1;
-      if (y > 0) { p.setY(i, 20 + n.fbm(a, 0.3, 6, 4) * 90); }
+      if (y > 0) { p.setY(i, (20 + n.fbm(a, 0.3, 6, 4) * 90) * (this.env.mountainHeightScale ?? 1)); }
       else p.setY(i, -1);
     }
     g.computeVertexNormals();
@@ -471,10 +519,11 @@ export class World {
   }
   bounds() {
     const h = this.half;
-    this.collider(-h - 1, -1, -h - 1, h + 1, 30, -h);
-    this.collider(-h - 1, -1, h, h + 1, 30, h + 1);
-    this.collider(-h - 1, -1, -h, -h, 30, h);
-    this.collider(h, -1, -h, h + 1, 30, h);
+    const [x0, z0, x1, z1] = this.def.extents || [-h, -h, h, h];
+    this.collider(x0 - 1, -1, z0 - 1, x1 + 1, 30, z0);
+    this.collider(x0 - 1, -1, z1, x1 + 1, 30, z1 + 1);
+    this.collider(x0 - 1, -1, z0, x0, 30, z1);
+    this.collider(x1, -1, z0, x1 + 1, 30, z1);
   }
 
   finalize() {
@@ -505,14 +554,15 @@ export class World {
 
   // ---------- 碰撞查询 ----------
   raycast(o, d, maxT, ignorePen = false) {
-    let best = maxT, hit = null;
+    const terrain = this.terrainHit(o, d, maxT);
+    let best = terrain ? terrain.t : maxT, hit = null;
     const bx = this.boxes;
     for (let i = 0; i < bx.length; i++) {
       const b = bx[i];
       const t = rayAABB(o.x, o.y, o.z, d.x, d.y, d.z, b, best);
       if (t >= 0 && t < best) { best = t; hit = b; }
     }
-    if (!hit) return null;
+    if (!hit) return terrain;
     const px = o.x + d.x * best, py = o.y + d.y * best, pz = o.z + d.z * best;
     const e = 0.002;
     let nx = 0, ny = 0, nz = 0;
@@ -527,6 +577,7 @@ export class World {
     const L = Math.hypot(dx, dy, dz);
     if (L < 0.01) return false;
     const ix = dx / L, iy = dy / L, iz = dz / L;
+    if (this.terrainHit(a, new THREE.Vector3(ix, iy, iz), L - 0.05)) return true;
     const bx = this.boxes;
     for (let i = 0; i < bx.length; i++) {
       if (rayAABB(a.x, a.y, a.z, ix, iy, iz, bx[i], L - 0.05) >= 0) return true;
@@ -562,7 +613,7 @@ export class World {
     }
   }
   groundHeight(x, z, feetY, radius, step = 0.45) {
-    let g = 0;
+    let g = this.terrainHeight ? this.terrainHeight(x, z) : 0;
     const bx = this.boxes;
     const r = radius * 0.7;
     for (let i = 0; i < bx.length; i++) {
@@ -594,7 +645,7 @@ export class World {
     this.grid = new Uint8Array(n * n);
     const inf = 0.4;
     for (const b of this.boxes) {
-      if (b.y1 <= 0.45 || b.y0 >= 1.7) continue;
+      if (!this.terrainHeight && (b.y1 <= 0.45 || b.y0 >= 1.7)) continue;
       const ix0 = Math.floor((b.x0 - inf + this.half) / cs), ix1 = Math.floor((b.x1 + inf + this.half) / cs);
       const iz0 = Math.floor((b.z0 - inf + this.half) / cs), iz1 = Math.floor((b.z1 + inf + this.half) / cs);
       for (let z = Math.max(0, iz0); z <= Math.min(n - 1, iz1); z++)
@@ -602,9 +653,16 @@ export class World {
           // 细检查：单元中心是否在膨胀盒内
           const wx = (x + 0.5) * cs - this.half, wz = (z + 0.5) * cs - this.half;
           if (wx > b.x0 - inf - 0.5 && wx < b.x1 + inf + 0.5 && wz > b.z0 - inf - 0.5 && wz < b.z1 + inf + 0.5) {
-            if (wx >= b.x0 - inf && wx <= b.x1 + inf && wz >= b.z0 - inf && wz <= b.z1 + inf) this.grid[z * n + x] = 1;
+            const y = this.terrainHeight ? this.terrainHeight(wx, wz) : 0;
+            if (b.y1 > y + 0.45 && b.y0 < y + 1.7 && wx >= b.x0 - inf && wx <= b.x1 + inf && wz >= b.z0 - inf && wz <= b.z1 + inf) this.grid[z * n + x] = 1;
           }
         }
+    }
+    if (this.def.extents || this.terrainHeight) for (let z = 0; z < n; z++) for (let x = 0; x < n; x++) {
+      const wx = (x + 0.5) * cs - this.half, wz = (z + 0.5) * cs - this.half;
+      const [x0, z0, x1, z1] = this.def.extents || [-this.half, -this.half, this.half, this.half];
+      if (wx < x0 + 1 || wx > x1 - 1 || wz < z0 + 1 || wz > z1 - 1) this.grid[z * n + x] = 1;
+      if (this.terrainHeight && (Math.abs(this.terrainHeight(wx + cs, wz) - this.terrainHeight(wx, wz)) > 0.65 || Math.abs(this.terrainHeight(wx, wz + cs) - this.terrainHeight(wx, wz)) > 0.65)) this.grid[z * n + x] = 1;
     }
     for (let i = 0; i < n; i++) { this.grid[i] = 1; this.grid[(n - 1) * n + i] = 1; this.grid[i * n] = 1; this.grid[i * n + n - 1] = 1; }
   }
@@ -621,7 +679,8 @@ export class World {
     for (let i = 0; i < 60; i++) {
       const x = cx + (Math.random() * 2 - 1) * Math.min(rad, this.half - 2), z = cz + (Math.random() * 2 - 1) * Math.min(rad, this.half - 2);
       const [ix, iz] = this.cellOf(x, z);
-      if (this.walkable(ix, iz) && this.ceilingHeight(x, z, 0, 0.3) > 2) return new THREE.Vector3(x, 0, z);
+      const y = this.terrainHeight ? this.terrainHeight(x, z) : 0;
+      if (this.walkable(ix, iz) && this.ceilingHeight(x, z, y, 0.3) > y + 2) return new THREE.Vector3(x, y, z);
     }
     return new THREE.Vector3(cx, 0, cz);
   }
@@ -695,6 +754,14 @@ export class World {
     const ctx = cv.getContext('2d');
     ctx.fillStyle = 'rgba(30,34,30,0.9)'; ctx.fillRect(0, 0, N, N);
     const k = N / this.def.size;
+    if (this.terrainHeight) {
+      for (let z = 0; z < N; z += 4) for (let x = 0; x < N; x += 4) {
+        const h = this.terrainHeight(x / k - this.half, z / k - this.half);
+        ctx.fillStyle = `rgb(${130 + h * 4},${119 + h * 3},${93 + h * 2})`; ctx.fillRect(x, z, 4, 4);
+      }
+      ctx.strokeStyle = '#63665c'; ctx.lineWidth = k * 8;
+      for (const [x0, z0, x1, z1] of this.mapRoads || []) { ctx.beginPath(); ctx.moveTo((x0 + this.half) * k, (z0 + this.half) * k); ctx.lineTo((x1 + this.half) * k, (z1 + this.half) * k); ctx.stroke(); }
+    }
     const sorted = [...this.boxes].filter(b => b.y1 > 0.3 && b.y1 < 40 && (b.x1 - b.x0) < this.def.size).sort((a, b) => a.y1 - b.y1);
     for (const b of sorted) {
       const v = Math.min(200, 70 + b.y1 * 12);
@@ -707,6 +774,7 @@ export class World {
   dispose() {
     this.root.traverse(o => {
       if (o.geometry) o.geometry.dispose();
+      if (o.userData.ownedTexture) { o.userData.ownedTexture.dispose(); o.material.dispose(); }
     });
     this.scene.remove(this.root);
     if (this._envRT) this._envRT.dispose();

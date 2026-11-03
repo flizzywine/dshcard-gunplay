@@ -298,7 +298,8 @@ class Game {
     return w;
   }
   async startGame(kind, cfg) {
-    if (kind !== 'mp' || !MAPS[cfg?.map] || !['tdm', 'dom', 'ffa'].includes(cfg?.mode)) throw new Error('仅支持多人对战及现有地图');
+    if (kind !== 'mp' || !MAPS[cfg?.map] || !['tdm', 'dom', 'ffa', 'breakthrough'].includes(cfg?.mode)) throw new Error('仅支持多人对战及现有地图');
+    if (cfg.mode === 'breakthrough' && !MAPS[cfg.map].sectors) throw new Error('攻防推进需要支持分区的地图');
     this.menu.showLoadingOverlay('正在部署…');
     await new Promise(r => setTimeout(r, 30));
     this.audio.init();

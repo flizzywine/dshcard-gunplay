@@ -6,7 +6,7 @@ const TEX = {};
 const MATS = {};
 const CAMO = {};
 
-const TEX_KINDS = ['concrete', 'plaster', 'brick', 'sand', 'snow', 'asphalt', 'metal', 'wood', 'crate', 'dirt', 'grass', 'rock', 'sandbag', 'tiles'];
+const TEX_KINDS = ['concrete', 'plaster', 'brick', 'sand', 'snow', 'asphalt', 'metal', 'wood', 'crate', 'dirt', 'grass', 'rock', 'sandbag', 'tiles', 'stucco', 'desertEarth', 'sandstone'];
 
 export async function initTextures(progress) {
   let i = 0;
@@ -38,6 +38,12 @@ function std(texKey, scale, params = {}) {
 }
 
 function buildMaterials() {
+  MATS.jinquSand = std('desertEarth', 10, { normalScale: 0.4 });
+  MATS.jinquStone = std('sandstone', 8, { normalScale: 0.6 });
+  MATS.jinquStucco = std('stucco', 5, { normalScale: 0.5 });
+  MATS.jinquWhite = std('stucco', 5, { color: 0xf2ece1, normalScale: 0.5 });
+  MATS.jinquOchre = std('stucco', 5, { color: 0xcda66f, normalScale: 0.5 });
+  MATS.jinquBlue = std('stucco', 5, { color: 0x99b3af, normalScale: 0.5 });
   MATS.concrete = std('concrete', 3);
   MATS.concreteDark = std('concrete', 3, { color: 0x8a8a90 });
   MATS.plaster = std('plaster', 4);

@@ -209,6 +209,7 @@ export class HUD {
     }
     en.textContent = name;
     this.drawMinimap();
+    this.drawTacticalMap();
     this.updateMarkers();
   }
 
@@ -289,6 +290,43 @@ export class HUD {
     ctx.fillStyle = 'rgba(255,255,255,.06)';
     ctx.beginPath(); ctx.moveTo(S / 2, S / 2); ctx.lineTo(S / 2 - 70, 0); ctx.lineTo(S / 2 + 70, 0); ctx.closePath(); ctx.fill();
     if (uav) { ctx.strokeStyle = 'rgba(212,242,74,.6)'; ctx.lineWidth = 2; ctx.strokeRect(1, 1, S - 2, S - 2); }
+  }
+
+  drawTacticalMap() {
+    const game = this.game, w = game.world, mode = game.mode;
+    if (!this.tacticalEl) {
+      this.tacticalEl = document.createElement('div'); this.tacticalEl.id = 'tacticalMap';
+      this.tacticalCanvas = document.createElement('canvas'); this.tacticalCanvas.width = 1000; this.tacticalCanvas.height = 760;
+      this.tacticalEl.appendChild(this.tacticalCanvas); $('hud').appendChild(this.tacticalEl);
+    }
+    const show = !!(w.sectors && game.input.keys.KeyM && !game.paused);
+    this.tacticalEl.style.display = show ? 'flex' : 'none';
+    if (!show) return;
+    const ctx = this.tacticalCanvas.getContext('2d'), scale = 3.35;
+    const [x0, z0, x1, z1] = w.def.extents, sx = 55, sy = 85;
+    ctx.fillStyle = '#17221f'; ctx.fillRect(0, 0, 1000, 760);
+    ctx.fillStyle = '#e2e8d6'; ctx.font = 'bold 26px sans-serif'; ctx.fillText('烬区 / 战术地图', 40, 42);
+    ctx.font = '14px sans-serif'; ctx.fillStyle = '#a9baac'; ctx.fillText('N ↑    A 岩下村 → B1 / B2 → C1 / C2     ·     松开 M 返回', 40, 66);
+    ctx.drawImage(w.topDown, (x0 + w.half) * w.topK, (z0 + w.half) * w.topK, (x1 - x0) * w.topK, (z1 - z0) * w.topK, sx, sy, (x1 - x0) * scale, (z1 - z0) * scale);
+    const px = x => sx + (x - x0) * scale, pz = z => sy + (z - z0) * scale;
+    for (let i = 0; i < (mode.breakthrough?.sectors || w.sectors).length; i++) {
+      const sector = (mode.breakthrough?.sectors || w.sectors)[i];
+      for (const f of sector.objectives) {
+        const active = mode.breakthrough && mode.breakthrough.stage === i;
+        const completed = mode.breakthrough && mode.breakthrough.stage > i;
+        ctx.strokeStyle = completed ? '#60b5f0' : active ? '#edb967' : '#b7b8a6';
+        ctx.fillStyle = active ? 'rgba(237,185,103,.22)' : 'rgba(20,30,25,.4)'; ctx.lineWidth = active ? 3 : 1;
+        ctx.beginPath(); ctx.arc(px(f.x), pz(f.z), f.radius * scale, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.textAlign = 'center'; ctx.fillStyle = '#ffffff'; ctx.font = 'bold 18px sans-serif'; ctx.fillText(f.name, px(f.x), pz(f.z) + 6);
+        ctx.font = '13px sans-serif'; ctx.fillText(f.title, px(f.x), pz(f.z) + f.radius * scale + 19);
+      }
+    }
+    for (const e of game.entities) {
+      if (!e.alive || !e.pos || e.team !== game.player.team) continue;
+      ctx.fillStyle = e.isPlayer ? '#e1f58e' : '#60b5f0'; ctx.beginPath(); ctx.arc(px(e.pos.x), pz(e.pos.z), e.isPlayer ? 6 : 3, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.textAlign = 'left'; ctx.font = '16px sans-serif'; ctx.fillStyle = '#d8dfca';
+    ctx.fillText('西侧高地 / 岩下村     ·     营地围墙 / 贫民窟屋顶     ·     仓库双墙 / 办公区三路入口', 40, 729);
   }
 
   showScoreboard(v) {

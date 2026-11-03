@@ -31,7 +31,7 @@ const entries = [{ path: 'card.json', content: JSON.stringify(card, null, 2) },
 for (const file of ['package.json', 'index.mjs', 'client.js']) entries.push({ path: `plugins/pixel-gunplay/${file}`, content: await readFile(path.join(root, 'dsh/plugin', file)) });
 const bytes = writeZipEntries(entries);
 readZipEntries(bytes);
-const out = path.resolve(process.argv[2] || path.join(root, 'dist/现代战线-0.1.0.dshcard'));
+const out = path.resolve(process.argv[2] || path.join(root, 'dist/dshcard-gunplay.dshcard'));
 await mkdir(path.dirname(out), { recursive: true });
 await writeFile(out, bytes);
 await writeFile(path.join(path.dirname(out), 'game-preview.html'), html);

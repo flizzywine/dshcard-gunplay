@@ -257,6 +257,7 @@ export const DEFAULT_CLASSES = [
 export const DEFAULT_STREAKS = ['uav', 'cluster', 'heli'];
 
 export const MP_MAPS = [
+  { id: 'jinqu', name: '烬区', desc: '西侧高地与岩下村 → 临时营地 / 贫民窟 → 军需仓库 / 办公区。', style: '沙漠城镇 · 三阶段攻防', grad: 'linear-gradient(135deg,#d9c39a,#6a705d)' },
   { id: 'dune', name: '沙丘镇', desc: '烈日下的中东小镇，集市街道与土坯民居交错，中远距离交火。', style: '沙漠 · 白昼', grad: 'linear-gradient(135deg,#d9a55b,#7a4f25)' },
   { id: 'frost', name: '寒霜炼厂', desc: '暴风雪中的废弃炼油厂，仓库、储油罐与集装箱构成多层次战场。', style: '雪地 · 阴天', grad: 'linear-gradient(135deg,#c9d6e3,#4f6275)' },
   { id: 'neon', name: '霓虹街区', desc: '雨夜中的都市街区，霓虹灯下的湿滑街道与狭窄小巷，近距离激战。', style: '都市 · 雨夜', grad: 'linear-gradient(135deg,#ff3fa4,#1b1f5e)' },
@@ -264,6 +265,7 @@ export const MP_MAPS = [
 ];
 
 export const MP_MODES = [
+  { id: 'breakthrough', name: '攻防推进', desc: '烬区专属。进攻方逐区占领 A → B1/B2 → C1/C2；防守方消耗进攻兵力。' },
   { id: 'tdm', name: '团队死斗', desc: '两支队伍对抗，率先达到击杀目标的队伍获胜。' },
   { id: 'dom', name: '占领', desc: '夺取并守住 A、B、C 三个据点以获取分数。' },
   { id: 'ffa', name: '自由混战', desc: '人人为敌，率先达到击杀目标者获胜。' },

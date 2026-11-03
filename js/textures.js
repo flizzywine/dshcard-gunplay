@@ -60,6 +60,24 @@ const n1 = new TileNoise(11, 128), n2 = new TileNoise(23, 128), n3 = new TileNoi
 function setC(o, r, g, b) { o.r = r; o.g = g; o.b = b; }
 
 const GEN = {
+  stucco(x, y, o) {
+    const f = n1.fbm(x, y, 12, 5), stain = n2.fbm(x, y, 3, 4), grain = n3.get(x, y, 128);
+    const v = (f - 0.5) * 22 - Math.max(0, stain - 0.55) * 65 + (grain - 0.5) * 9;
+    setC(o, 199 + v, 190 + v, 170 + v); o.h = f * 0.22 + grain * 0.07;
+    o.rough = 0.96;
+  },
+  desertEarth(x, y, o) {
+    const f = n1.fbm(x, y, 5, 6), grain = n3.get(x, y, 128), gravel = n2.fbm(x, y, 22, 3);
+    const v = (f - 0.5) * 35 + (grain - 0.5) * 20 + Math.max(0, gravel - 0.6) * 45;
+    setC(o, 168 + v, 153 + v * 0.95, 126 + v * 0.8); o.h = f * 0.25 + grain * 0.1;
+    o.rough = 1;
+  },
+  sandstone(x, y, o) {
+    const f = n1.fbm(x, y, 6, 5), strata = n2.fbm(x, y * 0.22, 12, 4);
+    const v = (f - 0.5) * 40 + (strata - 0.5) * 24;
+    setC(o, 152 + v, 140 + v * 0.95, 116 + v * 0.8); o.h = f * 0.5 + strata * 0.15;
+    o.rough = 0.98;
+  },
   concrete(x, y, o) {
     const f = n1.fbm(x, y, 8, 6);
     const s = n2.fbm(x, y, 2, 3);

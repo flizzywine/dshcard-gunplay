@@ -1,10 +1,12 @@
 // 地图定义
 import * as THREE from 'three';
 import { mulberry32, pick } from './util.js';
+import { JINQU } from './jinqu.js';
 
 const V = (x, z) => new THREE.Vector3(x, 0, z);
 
 export const MAPS = {
+  jinqu: JINQU,
   // ================= 沙丘镇 =================
   dune: {
     id: 'dune', name: '沙丘镇', size: 110, seed: 11, surface: 'sand', styles: ['ally', 'insurgent'],
