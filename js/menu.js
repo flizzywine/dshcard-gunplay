@@ -484,7 +484,7 @@ export class Menu {
         <div class="set-row"><span>画面质量</span><div class="seg" data-q="1">${['low', 'medium', 'high'].map((q, i) => `<div data-v="${q}" class="${S.quality === q ? 'sel' : ''}">${['低', '中', '高'][i]}</div>`).join('')}</div></div>
         ${rng('fov', '垂直视野（越小目标越大）', 65, 100, 1, fmts.fov)}
         ${sensitivity('sens', '鼠标灵敏度', 20)}
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">${[1, 2, 3, 5, 8, 12].map(v => `<button class="btn ghost small" data-sens="${v}">灵敏度 ${v}</button>`).join('')}<button class="btn ghost small" data-a="reset-sens">恢复原版灵敏度</button></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">${[1, 2, 3, 5, 8, 12].map(v => `<button class="btn ghost small" data-sens="${v}">灵敏度 ${v}</button>`).join('')}<button class="btn ghost small" data-a="reset-sens">恢复默认灵敏度</button></div>
         <div style="font-size:12px;color:#aaa;line-height:1.8">滑动或直接输入，自动保存，无需刷新。灵敏度 0.1–20，统一控制普通视角和开镜；开镜后按瞄准镜倍率自动减速。</div>
         ${inGame ? '<button class="btn" data-a="test-sens" style="margin:12px 0">返回对局试手感</button>' : ''}
         ${rng('recoilScale', '后坐力强度', 0, 2, 0.05, fmts.recoilScale)}
@@ -531,7 +531,7 @@ export class Menu {
     });
     this.on(r, '[data-adjust]', el => setSensitivity(el.dataset.adjust, S[el.dataset.adjust] * +el.dataset.factor));
     this.on(r, '[data-sens]', el => setSensitivity('sens', +el.dataset.sens));
-    this.on(r, '[data-a=reset-sens]', () => setSensitivity('sens', 1));
+    this.on(r, '[data-a=reset-sens]', () => setSensitivity('sens', 3));
     this.on(r, '[data-a=test-sens]', () => this.resume());
     r.querySelectorAll('.seg[data-t]').forEach(sg => sg.querySelectorAll('div').forEach(d => d.addEventListener('click', () => {
       const k = sg.dataset.t; S[k] = d.dataset.v === '1';

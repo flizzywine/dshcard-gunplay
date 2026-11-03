@@ -54,17 +54,19 @@ const GradeShader = {
 
 class Game {
   constructor() {
-    this.settings = Object.assign({ sens: 1.0, recoilScale: 0.6, spreadScale: 0.65, fov: 70, quality: 'high', volume: .8, voice: false, invertY: false, showFps: true }, JSON.parse(localStorage.getItem('mf_settings') || '{}'));
-    // One-time restoration also replaces the previously saved high sensitivity.
+    this.settings = Object.assign({ sens: 3, recoilScale: 0.3, spreadScale: 0, fov: 70, quality: 'high', volume: .8, voice: false, invertY: false, showFps: true }, JSON.parse(localStorage.getItem('mf_settings') || '{}'));
     if (!this.settings.originalControlsV1) {
-      Object.assign(this.settings, { sens: 1, fov: 70, invertY: false, voice: false, originalControlsV1: true });
+      Object.assign(this.settings, { fov: 70, invertY: false, voice: false, originalControlsV1: true });
       delete this.settings.aimMode;
       delete this.settings.gunplayV1;
       this.saveSettings();
     }
-    if (!this.settings.quickAimV1) {
-      this.settings.sens = 1.2;
-      this.settings.quickAimV1 = true;
+    // Upgrade former defaults once while retaining individually adjusted values.
+    if (!this.settings.gunplayDefaultsV2) {
+      if ([1, 1.2].includes(this.settings.sens)) this.settings.sens = 3;
+      if (this.settings.recoilScale === 0.6) this.settings.recoilScale = 0.3;
+      if (this.settings.spreadScale === 0.65) this.settings.spreadScale = 0;
+      this.settings.gunplayDefaultsV2 = true;
       this.saveSettings();
     }
     // One sensitivity control; discard the obsolete per-user ADS multiplier.

@@ -1,6 +1,6 @@
 {
   "name": "dsh-tavern-pixel-gunplay",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "exports": { ".": "./index.mjs", "./client": "./client.js" },
   "dsh": { "client": { "platform": "web", "inject": ["dsh-tavern-plugin"] } }
